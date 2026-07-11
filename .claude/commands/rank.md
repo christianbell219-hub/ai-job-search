@@ -114,6 +114,7 @@ Rules for the presentation:
 - Every claim traces to fetched posting text or the profile - no invented details.
 - Say explicitly that these are **triage scores from the posting text only**, and that `/apply` will re-evaluate with company research before anything is drafted.
 - Then ask: "Want to apply to any of these? Give me the number(s) and I'll start with the full `/apply` workflow."
+- If this run ranked a sizeable batch, also mention: "Run `/refine` to fold these rankings into your preference model - it learns what you gravitate toward and sharpens future `/scrape` queries." Ranking a job is itself a revealed-preference signal that `/refine` reads.
 - If the user picks one, run the `/apply` workflow on that job's URL, passing the triage verdict as prior context but **re-running the full Step 1 evaluation** - triage never substitutes for it.
 
 ---

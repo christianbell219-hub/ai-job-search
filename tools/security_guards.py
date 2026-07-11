@@ -37,6 +37,8 @@ ALLOWED_PERMISSIONS = {
     "Bash(bun run:*)",
     "Bash(python salary_lookup.py:*)",
     "Bash(python3 salary_lookup.py:*)",
+    "Bash(python tools/preference_model.py:*)",
+    "Bash(python3 tools/preference_model.py:*)",
     "Bash(pdftotext:*)",
 }
 
@@ -44,6 +46,7 @@ ALLOWED_PERMISSIONS = {
 REQUIRED_IGNORE_RULES = [
     "salary_data.json",
     "job_scraper/seen_jobs.json",
+    "job_scraper/preferences.json",
     "cv/main_*.tex",
     "!cv/main_example.tex",
     "cover_letters/cover_*.tex",

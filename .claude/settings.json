@@ -5,6 +5,8 @@
       "Bash(bun run:*)",
       "Bash(python salary_lookup.py:*)",
       "Bash(python3 salary_lookup.py:*)",
+      "Bash(python tools/preference_model.py:*)",
+      "Bash(python3 tools/preference_model.py:*)",
       "Bash(pdftotext:*)"
     ]
   }
