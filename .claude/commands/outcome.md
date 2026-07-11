@@ -97,6 +97,7 @@ Count the `outcome.md` files under `documents/applications/` with a **final** st
 
 - If 3 or more are resolved (or 2+ share a pattern - same role type rejected twice, same sector going silent), suggest:
   > "You now have <N> resolved applications on record. Run `/setup` (Path A) to fold them into your evaluation framework - it calibrates fit scoring from what actually got interviews, and mines your interview feedback for STAR examples."
+  > "Also run `/refine` - now that outcomes have resolved, it points your `/scrape` search at the role types, companies, and sectors that actually convert (and away from ones that stall)."
 - Do **not** write anything into `04-job-evaluation.md` or other skill files yourself. `/setup` Path A owns that merge - it is read-before-write and idempotent, and duplicating its logic here would race it.
 
 ---

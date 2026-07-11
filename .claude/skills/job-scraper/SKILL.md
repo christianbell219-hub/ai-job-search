@@ -40,11 +40,11 @@ Optional arguments:
 1. Read `job_scraper/seen_jobs.json` (create if missing - start with `{"seen": {}}`)
 2. Read `job_search_tracker.csv` to extract already-applied companies+roles
 3. Read `search-queries.md` (this directory) for the search strategy
-4. Read `job_scraper/preferences.json` if it exists (the revealed-preference model `/refine` maintains). Use it to **bias** this run toward the role terms, companies, and sectors the user is drawn to and away from ones they pass on. If it is missing or its `signal_strength` is `low`, ignore it and search the queries as written - never let a thin model narrow the search prematurely.
+4. Read `job_scraper/preferences.json` if it exists (the outcome-driven model `/refine` maintains). Use it to **bias** this run toward the role terms, companies, and sectors that have actually been converting (interviews/offers) and away from ones that repeatedly stall. If it is missing, `ready` is `false`, or `signal_strength` is `low`, ignore it and search the queries as written - never let a not-yet-ready model narrow the search prematurely.
 
 ### Step 1: Search
 
-Read `search-queries.md` (this directory) for the search strategy. By default, run the top 3 priority query categories. If the user said "broad", run all categories. If the user specified a focus area (e.g. "data science"), prioritize queries from that category. When a `preferences.json` model with `medium`+ signal is present, prefer the query categories that align with its `liked` terms and give them more result budget - this is how the search gets more tailored the more the user uses it.
+Read `search-queries.md` (this directory) for the search strategy. By default, run the top 3 priority query categories. If the user said "broad", run all categories. If the user specified a focus area (e.g. "data science"), prioritize queries from that category. When a `ready` `preferences.json` model (`medium`+ signal) is present, prefer the query categories that align with its converting (`liked`) terms and give them more result budget - this is how the search gets more tailored as real outcomes accumulate.
 
 **Use the installed CLI tools as the primary search mechanism.** Fall back to `WebSearch` only for portals that do not have a CLI skill, or if `bun` is unavailable on the system.
 
@@ -154,7 +154,7 @@ If the user picks a number, invoke the **job-application-assistant** skill workf
 
 If the run found many new jobs (roughly 8+), also suggest `/rank` - it batch-scores all new postings against the full fit framework and returns a ranked shortlist, which beats eyeballing a long table. (`/rank` sets the `ranked` and `expired` status values in `seen_jobs.json`; treat both as already-seen for dedup purposes.)
 
-If the user has accumulated new activity since the last refine (several newly ranked, evaluated, or applied-to jobs), suggest `/refine` - it learns from what they have been drawn to and sharpens the search queries so future scrapes surface more of the same. This is the feedback loop that makes results improve with use.
+Once the user has applied to jobs and started recording results with `/outcome`, `/refine` learns from what actually converts (interviews/offers) and sharpens these queries so future scrapes surface more of the same. It waits until a few outcomes have resolved, so early on the path is: `/scrape` → `/apply` → `/outcome`, and `/refine` kicks in later.
 
 ### Step 6: Update Tracker (Optional)
 

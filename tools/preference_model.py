@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""Revealed-preference engine for the AI Job Search feedback loop.
+"""Outcome-driven preference engine for the AI Job Search feedback loop.
 
-Reads the actions you have already taken - jobs scraped/ranked in
-`job_scraper/seen_jobs.json` and applications logged in `job_search_tracker.csv`
-- and distills a weighted "taste" model: which role terms, companies, and
-sectors you gravitate toward (applied to, evaluated, ranked highly) versus the
-ones you pass on (skipped, ranked low).
+This learns from what actually *converted*, not from what you merely applied to.
+It reads your resolved applications from `job_search_tracker.csv` (the `status`
+column `/outcome` maintains) and weights each role term, company, and sector by
+how far the application got: interviews and offers are strong positive signal,
+rejections and silence are negative. `/refine` then proposes sharper `/scrape`
+queries pointed at what works.
 
-`/refine` consumes this model to propose sharper `/scrape` queries. The
-arithmetic lives here so it is deterministic and unit-tested; the query
-synthesis and the human approval stay in the command spec - the same split as
-`salary_lookup.py` (tool) and `/apply` (command).
+Because it waits for outcomes, it stays quiet until you have recorded a handful
+of resolved applications (`--min-outcomes`, default 3). Applications still
+`applied`/`in_progress` are counted as *pending* and contribute no preference
+signal - that is the "wait for outcomes" behavior by design.
 
-The signal is *revealed preference*: it grows and sharpens the more you use the
-tool, and it works from your very first scrape - no resolved outcomes required.
+The arithmetic lives here so it is deterministic and unit-tested; the query
+synthesis and the human approval stay in the `/refine` command spec - the same
+split as `salary_lookup.py` (tool) and `/apply` (command).
 
 Stdlib only. Run from anywhere: python3 tools/preference_model.py [--json]
 """
@@ -28,28 +30,33 @@ from datetime import date
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_SEEN = ROOT / "job_scraper" / "seen_jobs.json"
 DEFAULT_TRACKER = ROOT / "job_search_tracker.csv"
+DEFAULT_MIN_OUTCOMES = 3
 
-# Applications are logged with these columns (see /outcome, /upskill).
-TRACKER_FINAL_STATUSES = {"hired", "rejected", "no response", "offer declined",
-                          "withdrawn", "offer_declined", "no_response"}
+# How far an application got, weighted for "find more like what converts".
+# Reaching interviews is traction; an offer (even one you declined) is the
+# strongest signal the role type fits you; rejection is a clear negative;
+# silence is a weak negative (often volume/luck, not fit).
+W_HIRED = 4.0
+W_OFFER = 4.0
+W_OFFER_DECLINED = 3.0
+W_INTERVIEW = 2.5
+W_REJECTED = -1.5
+W_NO_RESPONSE = -0.5
+W_WITHDRAWN = 0.0  # you pulled out - ambiguous, no fit signal
 
-# Weight each action contributes to the terms of the job it touched. Positive =
-# drawn toward, negative = avoided. Applying is the strongest revealed signal;
-# skipping is a clear negative; ranking is passive and weighted lightly.
-W_APPLIED = 3.0
-W_EVALUATED = 2.0
-W_RANKED_STRONG = 2.0   # rank_score >= 75
-W_RANKED_GOOD = 1.0     # 60 <= rank_score < 75
-W_RANKED_WEAK = -1.0    # rank_score < 30
-W_FIT_HIGH = 1.0
-W_FIT_LOW = -1.0
-W_PRACTICAL_CLEAR = 1.0  # practical_fit >= 70 (from the ranking layer)
-W_SKIPPED = -1.5
+OUTCOME_WEIGHTS = {
+    "hired": W_HIRED,
+    "offer": W_OFFER,
+    "offer declined": W_OFFER_DECLINED,
+    "interview": W_INTERVIEW,
+    "rejected": W_REJECTED,
+    "no response": W_NO_RESPONSE,
+    "withdrawn": W_WITHDRAWN,
+}
+# Positive-traction statuses (used for the "got interviews" count).
+TRACTION = {"hired", "offer", "offer declined", "interview"}
 
-# Minimal stopword list - drop true glue words, keep role/seniority/domain terms
-# (those are exactly the signal we want to learn).
 STOPWORDS = {
     "the", "of", "and", "for", "with", "to", "in", "a", "an", "at", "on",
     "or", "job", "role", "position", "vacancy", "opening", "m", "f", "d",
@@ -59,26 +66,42 @@ _TOKEN_RE = re.compile(r"[^a-z0-9+#]+")
 
 
 def tokenize(text):
-    """Lowercase and split a title/role string into meaningful terms."""
+    """Lowercase and split a role string into meaningful terms."""
     if not text:
         return []
     tokens = _TOKEN_RE.split(text.lower())
     return [t for t in tokens if len(t) >= 2 and t not in STOPWORDS]
 
 
-def load_seen(path=DEFAULT_SEEN):
-    """Load seen_jobs.json. Missing or malformed file -> empty model."""
-    try:
-        data = json.loads(Path(path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {"seen": {}}
-    if not isinstance(data, dict) or not isinstance(data.get("seen"), dict):
-        return {"seen": {}}
-    return data
+def classify_status(raw):
+    """Map a free-text tracker status to a canonical outcome key.
+
+    Returns a key in OUTCOME_WEIGHTS for a resolved outcome, or None for a
+    still-pending application (applied / in_progress / unknown) - which
+    contributes no preference signal.
+    """
+    s = (raw or "").strip().lower()
+    if not s:
+        return None
+    if "hire" in s:
+        return "hired"
+    if "offer" in s and "declin" in s:
+        return "offer declined"
+    if "offer" in s:
+        return "offer"
+    if "interview" in s:
+        return "interview"
+    if "reject" in s:
+        return "rejected"
+    if "withdraw" in s:
+        return "withdrawn"
+    if "no response" in s or "no_response" in s or "ghost" in s or "silence" in s:
+        return "no response"
+    return None  # applied / in_progress / anything unrecognised = pending
 
 
 def load_tracker(path=DEFAULT_TRACKER):
-    """Load applied jobs from the tracker CSV. Missing file -> []."""
+    """Load application rows from the tracker CSV. Missing file -> []."""
     try:
         text = Path(path).read_text(encoding="utf-8")
     except OSError:
@@ -87,39 +110,10 @@ def load_tracker(path=DEFAULT_TRACKER):
     return [r for r in rows if (r.get("company") or "").strip()]
 
 
-def entry_weight(entry):
-    """Signed revealed-preference weight for one seen_jobs.json entry."""
-    w = 0.0
-    status = (entry.get("status") or "").lower()
-    fit = (entry.get("fit") or "").lower()
-    if status == "evaluated":
-        w += W_EVALUATED
-    elif status == "skipped":
-        w += W_SKIPPED
-    if fit == "high":
-        w += W_FIT_HIGH
-    elif fit == "low":
-        w += W_FIT_LOW
-    rank = entry.get("rank_score")
-    if isinstance(rank, (int, float)) and not isinstance(rank, bool):
-        if rank >= 75:
-            w += W_RANKED_STRONG
-        elif rank >= 60:
-            w += W_RANKED_GOOD
-        elif rank < 30:
-            w += W_RANKED_WEAK
-    pf = entry.get("practical_fit")
-    if isinstance(pf, (int, float)) and not isinstance(pf, bool) and pf >= 70:
-        w += W_PRACTICAL_CLEAR
-    return w
-
-
-def _signal_strength(counts):
-    """Confidence in the model, driven by *deliberate* actions."""
-    deliberate = counts["applied"] + counts["evaluated"] + counts["skipped"]
-    if deliberate >= 10:
+def _signal_strength(resolved):
+    if resolved >= 7:
         return "high"
-    if deliberate >= 3:
+    if resolved >= 3:
         return "medium"
     return "low"
 
@@ -133,45 +127,47 @@ def _top(mapping, positive=True, limit=10):
     return items[:limit]
 
 
-def compute_preferences(seen, tracker_rows):
-    """Aggregate revealed preferences from seen jobs + applications."""
+def compute_preferences(tracker_rows, min_outcomes=DEFAULT_MIN_OUTCOMES):
+    """Aggregate outcome-driven preferences from resolved applications."""
     role_w = defaultdict(float)
     role_jobs = defaultdict(int)
     company_w = defaultdict(float)
     sector_w = defaultdict(float)
-    counts = {"seen_total": 0, "ranked": 0, "evaluated": 0, "skipped": 0, "applied": 0}
+    counts = {"applications": 0, "resolved": 0, "pending": 0,
+              "interviews_plus": 0, "rejected": 0, "no_response": 0}
 
-    for entry in seen.get("seen", {}).values():
-        counts["seen_total"] += 1
-        status = (entry.get("status") or "").lower()
-        if status in ("ranked", "evaluated", "skipped"):
-            counts[status] += 1
-        w = entry_weight(entry)
+    for row in tracker_rows:
+        counts["applications"] += 1
+        key = classify_status(row.get("status", ""))
+        if key is None:
+            counts["pending"] += 1
+            continue
+        counts["resolved"] += 1
+        if key in TRACTION:
+            counts["interviews_plus"] += 1
+        elif key == "rejected":
+            counts["rejected"] += 1
+        elif key == "no response":
+            counts["no_response"] += 1
+
+        w = OUTCOME_WEIGHTS[key]
         if w == 0:
             continue
         seen_terms = set()
-        for term in tokenize(entry.get("title", "")):
-            role_w[term] += w
-            if term not in seen_terms:
-                role_jobs[term] += 1
-                seen_terms.add(term)
-        company = (entry.get("company") or "").strip().lower()
-        if company:
-            company_w[company] += w
-
-    for row in tracker_rows:
-        counts["applied"] += 1
         for field in ("role", "role_type"):
             for term in tokenize(row.get(field, "")):
-                role_w[term] += W_APPLIED
-                role_jobs[term] += 1
+                role_w[term] += w
+                if term not in seen_terms:
+                    role_jobs[term] += 1
+                    seen_terms.add(term)
         company = (row.get("company") or "").strip().lower()
         if company:
-            company_w[company] += W_APPLIED
+            company_w[company] += w
         sector = (row.get("sector") or "").strip().lower()
         if sector:
-            sector_w[sector] += W_APPLIED
+            sector_w[sector] += w
 
+    resolved = counts["resolved"]
     liked_roles = [{"term": t, "weight": w, "jobs": role_jobs[t]}
                    for t, w in _top(role_w, positive=True)]
     disliked_roles = [{"term": t, "weight": w, "jobs": role_jobs[t]}
@@ -179,8 +175,10 @@ def compute_preferences(seen, tracker_rows):
 
     return {
         "generated": date.today().isoformat(),
+        "min_outcomes": min_outcomes,
+        "ready": resolved >= min_outcomes,
+        "signal_strength": _signal_strength(resolved),
         "counts": counts,
-        "signal_strength": _signal_strength(counts),
         "liked": {
             "roles": liked_roles,
             "companies": [{"term": t, "weight": w} for t, w in _top(company_w, positive=True)],
@@ -195,46 +193,52 @@ def compute_preferences(seen, tracker_rows):
 def format_report(prefs):
     c = prefs["counts"]
     lines = [
-        "## Revealed-preference model",
-        f"Signal strength: {prefs['signal_strength'].upper()} "
-        f"(applied {c['applied']}, evaluated {c['evaluated']}, skipped {c['skipped']}, "
-        f"ranked {c['ranked']}, seen {c['seen_total']})",
+        "## Outcome-driven preference model",
+        f"Applications: {c['applications']}  |  resolved: {c['resolved']}  "
+        f"(interviews+: {c['interviews_plus']}, rejected: {c['rejected']}, "
+        f"no-response: {c['no_response']})  |  pending: {c['pending']}",
+        f"Signal strength: {prefs['signal_strength'].upper()}",
         "",
     ]
-    if prefs["signal_strength"] == "low":
-        lines.append("Not enough deliberate actions yet - treat suggestions as directional, "
-                     "not statistical. The model sharpens as you rank, evaluate, and apply.")
-        lines.append("")
+    if not prefs["ready"]:
+        need = prefs["min_outcomes"]
+        lines.append(
+            f"Waiting for outcomes: {c['resolved']} resolved of {need} needed before "
+            f"refining. Record what happens to your applications with `/outcome` "
+            f"(interviews, offers, rejections). Until then there is nothing to learn from."
+        )
+        return "\n".join(lines).rstrip() + "\n"
 
-    def block(title, items, key="weight", extra=None):
+    def block(title, items):
         lines.append(f"### {title}")
         if not items:
             lines.append("(none yet)")
         for it in items:
-            note = f" [{it['jobs']} jobs]" if "jobs" in it else ""
-            lines.append(f"- {it['term']}  (weight {it[key]}){note}")
+            note = f" [{it['jobs']} apps]" if "jobs" in it else ""
+            lines.append(f"- {it['term']}  (weight {it['weight']}){note}")
         lines.append("")
 
-    block("Drawn toward — role terms", prefs["liked"]["roles"])
-    block("Drawn toward — companies", prefs["liked"]["companies"])
-    block("Drawn toward — sectors", prefs["liked"]["sectors"])
+    block("What converts — role terms", prefs["liked"]["roles"])
+    block("What converts — companies", prefs["liked"]["companies"])
+    block("What converts — sectors", prefs["liked"]["sectors"])
     if prefs["disliked"]["roles"]:
-        block("Passing on — role terms", prefs["disliked"]["roles"])
+        block("What stalls — role terms", prefs["disliked"]["roles"])
     return "\n".join(lines).rstrip() + "\n"
 
 
-def build_model(seen_path=DEFAULT_SEEN, tracker_path=DEFAULT_TRACKER):
-    return compute_preferences(load_seen(seen_path), load_tracker(tracker_path))
+def build_model(tracker_path=DEFAULT_TRACKER, min_outcomes=DEFAULT_MIN_OUTCOMES):
+    return compute_preferences(load_tracker(tracker_path), min_outcomes)
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Revealed-preference engine for /refine")
+    parser = argparse.ArgumentParser(description="Outcome-driven preference engine for /refine")
     parser.add_argument("--json", action="store_true", help="Emit JSON instead of a report")
-    parser.add_argument("--seen", default=str(DEFAULT_SEEN), help="Path to seen_jobs.json")
     parser.add_argument("--tracker", default=str(DEFAULT_TRACKER), help="Path to job_search_tracker.csv")
+    parser.add_argument("--min-outcomes", type=int, default=DEFAULT_MIN_OUTCOMES,
+                        help="Resolved outcomes required before refining (default 3)")
     args = parser.parse_args(argv)
 
-    prefs = build_model(args.seen, args.tracker)
+    prefs = build_model(args.tracker, args.min_outcomes)
     if args.json:
         print(json.dumps(prefs, indent=2))
     else:

@@ -1,22 +1,25 @@
-"""Tests for tools/preference_model.py — the revealed-preference engine."""
+"""Tests for tools/preference_model.py — the outcome-driven preference engine."""
 
 import unittest
 
 from tools.preference_model import (
     tokenize,
-    entry_weight,
-    load_seen,
+    classify_status,
     load_tracker,
     compute_preferences,
-    W_APPLIED,
-    W_EVALUATED,
-    W_SKIPPED,
-    W_RANKED_STRONG,
+    W_INTERVIEW,
+    W_OFFER,
+    W_REJECTED,
 )
 
 
-def seen(*entries):
-    return {"seen": {str(i): e for i, e in enumerate(entries)}}
+def rows(*specs):
+    """Build tracker rows from (company, role, sector, status) tuples."""
+    out = []
+    for company, role, sector, status in specs:
+        out.append({"company": company, "role": role, "role_type": "",
+                    "sector": sector, "status": status})
+    return out
 
 
 class TokenizeTests(unittest.TestCase):
@@ -34,101 +37,117 @@ class TokenizeTests(unittest.TestCase):
         self.assertEqual(tokenize(None), [])
 
 
-class EntryWeightTests(unittest.TestCase):
-    def test_evaluated_is_positive(self):
-        self.assertEqual(entry_weight({"status": "evaluated"}), W_EVALUATED)
+class ClassifyStatusTests(unittest.TestCase):
+    def test_pending_states_return_none(self):
+        for s in ("applied", "in_progress", "in progress", "", "new", None):
+            self.assertIsNone(classify_status(s))
 
-    def test_skipped_is_negative(self):
-        self.assertEqual(entry_weight({"status": "skipped"}), W_SKIPPED)
+    def test_resolved_outcomes(self):
+        self.assertEqual(classify_status("Interview scheduled"), "interview")
+        self.assertEqual(classify_status("1st interview done"), "interview")
+        self.assertEqual(classify_status("hired!"), "hired")
+        self.assertEqual(classify_status("offer received"), "offer")
+        self.assertEqual(classify_status("offer declined"), "offer declined")
+        self.assertEqual(classify_status("Rejected"), "rejected")
+        self.assertEqual(classify_status("no response"), "no response")
+        self.assertEqual(classify_status("withdrawn"), "withdrawn")
 
-    def test_strong_rank_and_high_fit_stack(self):
-        w = entry_weight({"status": "ranked", "fit": "high", "rank_score": 82})
-        self.assertEqual(w, W_RANKED_STRONG + 1.0)  # fit_high = 1.0
-
-    def test_practical_clear_bonus(self):
-        w = entry_weight({"rank_score": 90, "practical_fit": 75})
-        self.assertEqual(w, W_RANKED_STRONG + 1.0)  # strong rank + practical bonus
-
-    def test_weak_rank_is_negative(self):
-        self.assertEqual(entry_weight({"rank_score": 12}), -1.0)
-
-    def test_bool_is_not_treated_as_score(self):
-        # True is an int subclass; must not be read as rank_score 1
-        self.assertEqual(entry_weight({"rank_score": True}), 0.0)
-
-    def test_neutral_entry_is_zero(self):
-        self.assertEqual(entry_weight({"status": "new"}), 0.0)
+    def test_offer_declined_precedence_over_offer(self):
+        self.assertEqual(classify_status("offer declined by me"), "offer declined")
 
 
 class LoadGracefulTests(unittest.TestCase):
-    def test_missing_seen_returns_empty(self):
-        self.assertEqual(load_seen("/nonexistent/seen.json"), {"seen": {}})
-
     def test_missing_tracker_returns_empty(self):
         self.assertEqual(load_tracker("/nonexistent/tracker.csv"), [])
 
 
-class ComputePreferencesTests(unittest.TestCase):
-    def test_applied_role_terms_outrank_skipped(self):
-        tracker = [{"company": "Novo", "sector": "pharma", "role": "Data Scientist",
-                    "role_type": "data science"}]
-        model = compute_preferences(
-            seen({"title": "Sales Manager", "status": "skipped", "fit": "low"}),
-            tracker,
-        )
+class WaitForOutcomesTests(unittest.TestCase):
+    def test_no_applications_is_not_ready(self):
+        model = compute_preferences([])
+        self.assertFalse(model["ready"])
+        self.assertEqual(model["signal_strength"], "low")
+
+    def test_only_pending_applications_wait(self):
+        model = compute_preferences(rows(
+            ("A", "Data Scientist", "tech", "applied"),
+            ("B", "ML Engineer", "tech", "in_progress"),
+        ))
+        self.assertFalse(model["ready"])
+        self.assertEqual(model["counts"]["pending"], 2)
+        self.assertEqual(model["counts"]["resolved"], 0)
+        # No preference signal is produced while waiting.
+        self.assertEqual(model["liked"]["roles"], [])
+
+    def test_ready_once_min_outcomes_resolved(self):
+        model = compute_preferences(rows(
+            ("A", "Data Scientist", "tech", "interview"),
+            ("B", "Data Analyst", "tech", "rejected"),
+            ("C", "ML Engineer", "tech", "offer"),
+        ), min_outcomes=3)
+        self.assertTrue(model["ready"])
+        self.assertEqual(model["counts"]["resolved"], 3)
+        self.assertEqual(model["signal_strength"], "medium")
+
+    def test_min_outcomes_threshold_is_configurable(self):
+        r = rows(("A", "DS", "t", "interview"), ("B", "DS", "t", "rejected"))
+        self.assertFalse(compute_preferences(r, min_outcomes=3)["ready"])
+        self.assertTrue(compute_preferences(r, min_outcomes=2)["ready"])
+
+
+class OutcomeSignalTests(unittest.TestCase):
+    def test_converting_roles_are_liked_stalling_roles_disliked(self):
+        model = compute_preferences(rows(
+            ("A", "Data Scientist", "pharma", "offer"),
+            ("B", "Data Scientist", "pharma", "interview"),
+            ("C", "Sales Manager", "retail", "rejected"),
+        ))
         liked = [r["term"] for r in model["liked"]["roles"]]
         disliked = [r["term"] for r in model["disliked"]["roles"]]
         self.assertIn("scientist", liked)
-        self.assertIn("data", liked)
         self.assertIn("sales", disliked)
         self.assertNotIn("scientist", disliked)
 
-    def test_company_and_sector_signal_from_application(self):
-        model = compute_preferences(
-            seen(),
-            [{"company": "Novo Nordisk", "sector": "Pharma", "role": "ML Engineer",
-              "role_type": ""}],
-        )
+    def test_pending_application_contributes_no_signal(self):
+        model = compute_preferences(rows(
+            ("A", "Data Scientist", "pharma", "offer"),
+            ("B", "Data Scientist", "pharma", "interview"),
+            ("C", "Astronaut", "space", "applied"),  # pending -> ignored
+        ))
+        liked = [r["term"] for r in model["liked"]["roles"]]
+        self.assertNotIn("astronaut", liked)
+
+    def test_offer_outweighs_single_rejection_for_same_role(self):
+        model = compute_preferences(rows(
+            ("A", "Data Scientist", "t", "offer"),
+            ("B", "Data Scientist", "t", "rejected"),
+            ("C", "Data Scientist", "t", "interview"),
+        ))
+        scientist = next(r for r in model["liked"]["roles"] if r["term"] == "scientist")
+        self.assertEqual(scientist["weight"], round(W_OFFER + W_REJECTED + W_INTERVIEW, 1))
+        self.assertEqual(scientist["jobs"], 3)
+
+    def test_company_and_sector_signal_from_conversions(self):
+        model = compute_preferences(rows(
+            ("Novo Nordisk", "Data Scientist", "Pharma", "interview"),
+        ), min_outcomes=1)
         self.assertEqual(model["liked"]["companies"][0]["term"], "novo nordisk")
         self.assertEqual(model["liked"]["sectors"][0]["term"], "pharma")
 
-    def test_counts_and_signal_strength(self):
-        model = compute_preferences(
-            seen(
-                {"title": "A Engineer", "status": "evaluated"},
-                {"title": "B Engineer", "status": "skipped", "fit": "low"},
-                {"title": "C Engineer", "status": "ranked", "rank_score": 80},
-            ),
-            [{"company": "X", "role": "Engineer", "sector": "tech"}],
-        )
-        self.assertEqual(model["counts"]["applied"], 1)
-        self.assertEqual(model["counts"]["evaluated"], 1)
-        self.assertEqual(model["counts"]["skipped"], 1)
-        self.assertEqual(model["counts"]["ranked"], 1)
-        self.assertEqual(model["counts"]["seen_total"], 3)
-        # deliberate = applied(1)+evaluated(1)+skipped(1) = 3 -> medium
-        self.assertEqual(model["signal_strength"], "medium")
-
-    def test_low_signal_when_only_passive_ranking(self):
-        model = compute_preferences(
-            seen({"title": "Data Scientist", "status": "ranked", "rank_score": 70}),
-            [],
-        )
-        self.assertEqual(model["signal_strength"], "low")
-
-    def test_empty_inputs_do_not_crash(self):
-        model = compute_preferences({"seen": {}}, [])
-        self.assertEqual(model["signal_strength"], "low")
-        self.assertEqual(model["liked"]["roles"], [])
-        self.assertEqual(model["disliked"]["roles"], [])
-
-    def test_repeated_applications_accumulate_weight(self):
-        rows = [{"company": "A", "role": "Data Scientist", "sector": "s"},
-                {"company": "B", "role": "Data Scientist", "sector": "s"}]
-        model = compute_preferences(seen(), rows)
-        scientist = next(r for r in model["liked"]["roles"] if r["term"] == "scientist")
-        self.assertEqual(scientist["weight"], round(2 * W_APPLIED, 1))
-        self.assertEqual(scientist["jobs"], 2)
+    def test_counts_breakdown(self):
+        model = compute_preferences(rows(
+            ("A", "DS", "t", "interview"),
+            ("B", "DS", "t", "offer"),
+            ("C", "DS", "t", "rejected"),
+            ("D", "DS", "t", "no response"),
+            ("E", "DS", "t", "applied"),
+        ))
+        c = model["counts"]
+        self.assertEqual(c["applications"], 5)
+        self.assertEqual(c["resolved"], 4)
+        self.assertEqual(c["pending"], 1)
+        self.assertEqual(c["interviews_plus"], 2)
+        self.assertEqual(c["rejected"], 1)
+        self.assertEqual(c["no_response"], 1)
 
 
 if __name__ == "__main__":
