@@ -47,6 +47,13 @@
 ### Software & Tools
 - [TOOL_LIST]
 
+## Work Preferences
+<!-- Reference values for the Practical Fit Ranking Layer in 04-job-evaluation.md -->
+- **Salary expectation:** [YOUR_SALARY_EXPECTATION]
+- **Remote preference:** [YOUR_REMOTE_PREFERENCE]
+- **Max commute:** [YOUR_MAX_COMMUTE]
+- **Work authorization:** [YOUR_WORK_AUTHORIZATION]
+
 ## Publications
 <!-- List peer-reviewed publications, if any -->
 1. [AUTHOR_LIST] ([YEAR]). [TITLE]. [JOURNAL]. [DOI_LINK]

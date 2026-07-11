@@ -71,6 +71,12 @@ This repo is a job application workspace. Claude acts as a career advisor and ap
 - [SECTOR_1]: [EXAMPLE_COMPANIES]
 - [SECTOR_2]: [EXAMPLE_COMPANIES]
 
+### Work Preferences
+<!-- Reference values for the Practical Fit Ranking Layer (salary / remote / visa / skill match) -->
+- **Salary expectation:** [YOUR_SALARY_EXPECTATION]
+- **Remote preference:** [YOUR_REMOTE_PREFERENCE] (max commute: [YOUR_MAX_COMMUTE])
+- **Work authorization:** [YOUR_WORK_AUTHORIZATION]
+
 ### Deal-breakers
 <!-- Hard constraints on job search -->
 - [DEALBREAKER_1]

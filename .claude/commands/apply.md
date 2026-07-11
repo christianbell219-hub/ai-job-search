@@ -41,7 +41,8 @@ Present the evaluation to the user with:
 2. **Experience match** - how work history maps to the role
 3. **Behavioral/culture match** - how behavioral profile fits the role/company culture
 4. **Salary benchmark** - salary index for the company (if available)
-5. **Overall fit score** and recommendation (strong fit / moderate fit / weak fit)
+5. **Practical Fit Ranking Layer** - the salary / remote / visa / skill-match scores and the `practical_fit` band from `04-job-evaluation.md`, so the user sees "can I actually take it?" alongside "is it a good role?"
+6. **Overall fit score** and recommendation (strong fit / moderate fit / weak fit)
 
 After presenting the evaluation, ask the user:
 > "Should I proceed with drafting the CV and cover letter for this role?"

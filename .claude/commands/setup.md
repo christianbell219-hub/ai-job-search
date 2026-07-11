@@ -220,6 +220,7 @@ Documents cover skills, experience, education, references, and behavioral signal
 - Deal-breakers and must-haves
 - Salary expectations / baseline (optional)
 - Commute or location constraints (if not visible from CV)
+- Remote preference and work authorization / visa needs (feed the Practical Fit Ranking Layer)
 - Job search configuration (use the questions from Path C Section 9 below)
 
 Then proceed to Step 3 to populate the non-skill files (`CLAUDE.md`, `cv/main_example.tex`, `.claude/skills/job-scraper/search-queries.md`). Step 3 will detect that the seven skill files are already populated and skip those substeps.
@@ -233,7 +234,7 @@ If the user provides a single CV/resume:
 1. Read the document thoroughly.
 2. Extract all structured information: name, contact, education, experience, skills, publications, awards.
 3. Present a summary of what was extracted.
-4. Ask follow-up questions for gaps (behavioral profile, career goals, deal-breakers, salary expectations, references).
+4. Ask follow-up questions for gaps (behavioral profile, career goals, deal-breakers, salary expectations, remote preference, work authorization / visa needs, references).
 5. Proceed to Step 3 (file generation).
 
 ---
@@ -299,6 +300,10 @@ If not, ask behavioral questions:
 - Salary expectations/baseline (optional)
 - What environments to avoid
 - Commute/location constraints
+- **Remote preference** (remote-only / hybrid-preferred / onsite-ok / flexible) and max acceptable commute
+- **Work authorization** (which countries/regions you can already work in, and whether you need visa sponsorship)
+
+The last three feed the Practical Fit Ranking Layer's Salary, Remote, and Visa sub-scores in `04-job-evaluation.md`.
 
 ### Section 8: References (optional)
 For each reference:
@@ -332,7 +337,7 @@ Once data collection is complete, generate or finish populating the following fi
 Replace all `[PLACEHOLDER]` tokens with the user's actual information. Keep the structure, workflow, and verification checklist intact.
 
 ### 2. Populate `01-candidate-profile.md` *(Path B and C; skip if Path A populated it)*
-Write the full candidate profile with structured sections: Identity, Education, Professional Experience, Independent Projects, Technical Skills, Publications, Awards, References.
+Write the full candidate profile with structured sections: Identity, Education, Professional Experience, Independent Projects, Technical Skills, Work Preferences (salary expectation, remote preference, max commute, work authorization), Publications, Awards, References.
 
 ### 3. Populate `02-behavioral-profile.md` *(Path B and C; skip if Path A populated it)*
 Write the behavioral profile based on assessment results or synthesized answers.
@@ -343,7 +348,7 @@ Replace skill match areas with the user's actual skills:
 - Moderate match areas: [their secondary skills]
 - Weak match areas: [skills they lack]
 
-Update career goals and motivation filters with their actual preferences.
+Update career goals and motivation filters with their actual preferences. Also fill the **Practical Fit Ranking Layer** reference values (salary expectation, remote preference + max commute, work authorization) from Section 7 / the Path A follow-ups; leave any the user skipped as their placeholder token so that sub-score degrades to `N/A`.
 
 ### 5. Update `05-cv-templates.md` *(Path B and C; skip if Path A populated it)*
 Add role-specific profile statement templates based on their background.
