@@ -132,6 +132,8 @@ applications/
 **Salutation used:** <Dear …>
 ```
 
+**`offer.md`** — Written by `/outcome` when an offer is recorded. Posting range vs salary-tool index vs notes. `/setup` ignores it.
+
 **`outcome.md`** — Fill this in after the application resolves. Format:
 
 ```markdown
@@ -156,7 +158,7 @@ Any signal about what they valued or didn't?
 
 `in_progress` marks an application that is still open (used by `/outcome` for interview-stage updates before a resolution). `/setup`'s calibration draws conclusions only from applications with a final status.
 
-Application folders may also contain **`interview_prep_<stage>.md`** files written by `/interview` (one per interview stage, kept as history) and **`contact.md`** written by `/apply`. `/setup` reads only `job_posting.md`, `cover_letter.tex`, `cv_draft.tex`, and `outcome.md` and ignores the rest.
+Application folders may also contain **`interview_prep_<stage>.md`** and **`interview_followup_<stage>.md`** files written by `/interview`, **`contact.md`** written by `/apply`, and **`offer.md`** written by `/outcome`. `/setup` reads only `job_posting.md`, `cover_letter.tex`, `cv_draft.tex`, and `outcome.md` and ignores the rest.
 
 **What `/setup` learns from outcome.md:**
 - Which role types and companies have led to interviews (signals strong fit areas)

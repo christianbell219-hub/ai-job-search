@@ -163,6 +163,12 @@ Claude will offer three paths:
 
 All three paths produce the same result: fully populated profile files.
 
+**This step is personal and required.** The template ships `[PLACEHOLDER]` tokens on purpose; `/setup` replaces them in *your* clone. Until it has run, `/scrape` and `/apply` will produce generic output. After `/setup`, also:
+
+1. Confirm **Workplace filter** in `.claude/skills/job-scraper/search-queries.md` is a real mode (`onsite` / `hybrid` / `remote-ok` / `remote-only`), not still `[YOUR_WORKPLACE_MODE]`. Re-run `/setup --section search` if needed.
+2. Run **`/expand`** so GitHub, portfolio, and course syllabi get source-tagged into the profile.
+3. Optionally add `salary_data.json` (section 5 below) so `/apply` can benchmark.
+
 ### What gets populated
 
 | File | Content |
@@ -186,7 +192,7 @@ You can update specific sections later:
 /setup --section search
 ```
 
-The `--section search` option is especially useful as your priorities evolve. It re-runs the search configuration interview and suggests role types you may not have considered based on your full profile.
+The `--section search` option is especially useful as your priorities evolve. It re-runs the search configuration interview (roles, skills, **workplace mode**, locations, portals) and suggests role types you may not have considered based on your full profile.
 
 ## 5. Optional: Set up salary benchmarking
 
@@ -201,7 +207,11 @@ If you have salary data (from a union, salary survey, Glassdoor, or personal res
 
 This creates `salary_data.json` which the `/apply` workflow uses for salary benchmarking. If you skip this step, salary lookup is simply omitted.
 
-## 6. Test the workflow
+## 6. Check the pipeline
+
+After you have applied to a few roles, `/status` reads the tracker, scrape backlog, and application archives and shows what is waiting, silent (no reply after 14 days), or upcoming. Use it instead of opening the CSV by hand.
+
+## 7. Test the workflow
 
 Find a job posting you're interested in, then:
 
@@ -222,7 +232,7 @@ Claude will:
 4. Have a reviewer agent critique the drafts
 5. Revise and present the final output
 
-## 7. Compile your documents
+## 8. Compile your documents
 
 After `/apply` creates the LaTeX files:
 

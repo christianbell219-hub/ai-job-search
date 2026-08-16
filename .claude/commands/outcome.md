@@ -27,7 +27,7 @@ Follow these steps **in order**.
    date,company,sector,role,role_type,channel,status,contact_person,fit_rating,notes,cv_file,cover_letter_file,source
    ```
 2. **With an argument:** match rows case-insensitively on company (and role, if given). One match → proceed. Several → list them and ask. None → the application was made outside the workflow; collect company, role, date applied, channel, and posting URL from the user and add a tracker row.
-3. **Without an argument:** list all rows whose status is not final (not hired / rejected / no response / withdrawn / offer declined) as a numbered table (company, role, date applied, current status) and ask which to update. If every row is resolved, say so and stop.
+3. **Without an argument:** list all rows whose status is not final (not hired / rejected / no response / withdrawn / offer declined) as a numbered table (company, role, date applied, current status) and ask which to update. Flag rows whose status is still `applied` (or waiting) and whose `date` is **14 or more days** ago as **silent** — ask whether to log a follow-up or mark `no_response`. Do not impose `no_response` yourself. If every row is resolved, say so and stop.
 4. Derive the archive folder name: `documents/applications/<company>_<role>/` - lowercase, underscores for spaces (the convention documented in `documents/README.md`). Check whether the folder and an `outcome.md` already exist - if so, you are updating, not creating.
 
 ---
@@ -51,6 +51,14 @@ Also collect, without interrogating - one or two open questions are enough:
 - Dates for the stages reached
 - Any feedback received, verbatim where the user remembers it
 - What they'd do differently, and any signal about what the company valued (these feed `/setup`'s calibration and STAR-candidate mining, so concrete beats polished)
+
+### Offer received
+
+If the update is an **offer** (still open or just received):
+
+1. Read `job_posting.md` (or the tracker `source`) for any stated salary/range.
+2. If `salary_data.json` exists, run `python salary_lookup.py "<Company>" --json` (add `--city` when the posting has a city). Skip cleanly if the tool is missing or errors — same pattern as `/apply`.
+3. Write `documents/applications/<company>_<role>/offer.md` with a short compare: posting range (or "not stated"), salary-tool index if any, and the user's notes. **Do not recommend accept or decline.** Suggest they re-run `/outcome` when they decide (`hired` vs `offer_declined`).
 
 ---
 
