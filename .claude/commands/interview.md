@@ -14,6 +14,7 @@ Follow these steps **in order**.
 
 - **With an argument:** match against `job_search_tracker.csv` rows (case-insensitive on company, then role). One match → proceed. Several → list and ask. None → this application isn't tracked; suggest `/outcome <company>` to register it first, or accept the posting and role details directly if the user wants to prep anyway.
 - **Without an argument:** list tracker rows whose status suggests a live process (`interview`, `offer`, or recently `applied`) and ask which one. If the tracker is empty, ask for the company, role, and posting.
+- **`--followup`:** skip the mock (Step 4) and go to the follow-up pack (Step 6) after loading context — use this after the round already happened.
 
 v1 preps for a **specific application**. Generic no-target practice is out of scope - if asked, prep against a real tracked application instead.
 
@@ -83,6 +84,8 @@ Save the pack to `documents/applications/<company>_<role>/interview_prep_<stage>
 
 ## Step 4: Offer a Mock Interview
 
+If `$ARGUMENTS` contains `--followup`, skip this step and go to Step 6 (reuse `interview_prep_<stage>.md` from the archive when it exists; only rebuild Step 3 if it is missing).
+
 Ask if the user wants to practice. If yes, run the roleplay **in this conversation** following the Roleplay Guidelines in `07-interview-prep.md` exactly: warm-up first, then role-specific technical questions, 1-2 behavioral questions tied to the posting's competencies, and one tough question or curveball. After each answer, give brief feedback - what worked, what to sharpen, and which STAR example from the pack would have served better.
 
 Calibrate feedback against `02-behavioral-profile.md`: coach toward the user's natural register, not a generic ideal - the same voice-consistency rule the `/apply` reviewer applies to cover letters.
@@ -93,9 +96,41 @@ Calibrate feedback against `02-behavioral-profile.md`: coach toward the user's n
 
 End with:
 
-> Good luck. After the interview, run `/outcome <company>` to log the stage and any feedback - it sharpens the prep for the next round, and once the process resolves it feeds your fit-framework calibration via `/setup`.
+> Good luck. After the interview, run `/interview <company> --followup` for a thank-you draft and next-round pack, then `/outcome <company>` to log the stage and any feedback - it sharpens the prep for the next round, and once the process resolves it feeds your fit-framework calibration via `/setup`.
 
 If Step 3 drafted new STAR answers the user approved for keeps, remind them those were appended to `07-interview-prep.md` (or offer again if they deferred).
+
+If the user is about to walk into the interview (not `--followup`), also offer to generate the **follow-up pack now** as a draft they can send after (Step 6). If they decline, stop after this close.
+
+---
+
+## Step 6: Follow-up pack (thank-you + next round)
+
+Run this after Step 4 when the user wants it, immediately when `$ARGUMENTS` contains `--followup`, or when they say the interview already happened.
+
+Ask only what you still need: which questions came up, anything they wish they had asked, and whether the next stage is known.
+
+### 1. Thank-you note
+
+Draft a 2–3 sentence note. Addressee:
+
+- `contact.md` name at **high** confidence, or medium/low **the user already confirmed** for the cover letter → that person, by name
+- Interviewer names the user just gave you → those names
+- Otherwise → the hiring team / "Dear Hiring Team," — **never invent a name**
+
+Keep it short, specific to this round (one verified hook from Step 2 is enough), no new claims beyond the submitted CV/cover letter. Match the posting language (Danish posting → Danish note).
+
+### 2. Questions not asked
+
+From the Step 3 "Questions to ask" list, list the ones that still matter for the next round. Drop any the research already answered or the user says they asked.
+
+### 3. Next-round prep
+
+A short brief: likely next stage, gaps that got probed (from `outcome.md` or what the user just reported), which STAR examples to keep warm, and honest bridges for remaining gaps. Do not invent experience.
+
+Save to `documents/applications/<company>_<role>/interview_followup_<stage>.md`. Present it in chat as well.
+
+Then remind: `/outcome <company>` to log the stage.
 
 ---
 
@@ -105,4 +140,5 @@ If Step 3 drafted new STAR answers the user approved for keeps, remind them thos
 2. **Honesty on gaps.** Weak matches get bridge answers (acknowledge → adjacent experience → learning path), never invented experience. Same rule as everywhere else in this repo.
 3. **Verified research only.** Company specifics go in the pack only after independent confirmation. Interviewer notes stick to public professional information.
 4. **Stage-appropriate prep.** A phone screen pack and a final-round pack are different documents; recorded feedback from earlier stages takes priority over generic question lists.
-5. **Write only to the application archive.** The prep pack lands in `documents/applications/<company>_<role>/`; framework and profile files are never edited, except appending user-approved STAR examples to `07-interview-prep.md` on explicit request.
+5. **Write only to the application archive.** The prep pack and follow-up pack land in `documents/applications/<company>_<role>/`; framework and profile files are never edited, except appending user-approved STAR examples to `07-interview-prep.md` on explicit request.
+6. **Never invent a thank-you addressee.** Same confidence ladder as `/apply` Step 0b.

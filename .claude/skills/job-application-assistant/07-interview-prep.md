@@ -97,6 +97,8 @@ Keep answers to 1-2 minutes. Be specific. End with what you learned or would do 
 - When you receive any update (interview invitation, rejection, or status update), send a brief thank-you message
 - Express appreciation for their time and the process
 - Keep it short (2-3 sentences)
+- Address the person in `contact.md` only at high (or user-confirmed) confidence; otherwise the hiring team. Never invent a name.
+- `/interview --followup` drafts this note into `interview_followup_<stage>.md` after a round
 
 ## Roleplay Guidelines
 When the user asks for interview practice:
