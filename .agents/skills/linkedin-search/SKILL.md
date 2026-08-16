@@ -96,3 +96,5 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 - Page size is fixed at 10 results per page.
 - LinkedIn may rate-limit; the CLI retries 429/5xx with exponential backoff. Keep volume low (see ToS note above).
 - Job IDs are numeric (e.g. `4426311357`) — pass them as-is to `detail`.
+- **Remote search:** pass `-l "Remote" --remote remote` for global remote (`f_WT=2`). A city as `-l` without `--remote` is onsite/hybrid in that market, not remote. Optional second pass: `-l "<city>" --remote remote` for remote jobs LinkedIn associated with that market.
+- **`detail` `hiringTeam`:** parsed from guest HTML when a "Meet the hiring team" / `hirer-card` block is present; otherwise `null`. Logged-out pages often omit it — do not invent names, and do not scrape LinkedIn people search.

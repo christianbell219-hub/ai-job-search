@@ -53,3 +53,38 @@ describe("decodeHtmlEntities (via parseJobDetail)", () => {
     expect(job.title).toBe("Señor Engineer");
   });
 });
+
+describe("parseHiringTeam (via parseJobDetail)", () => {
+  test("returns null when guest HTML has no hiring-team block", () => {
+    const html = `<h1 class="topcard__title">Engineer</h1>
+      <a href="https://www.linkedin.com/in/random-person">Random</a>`;
+    const job = parseJobDetail(html, "999");
+    expect(job.hiringTeam).toBeNull();
+  });
+
+  test("parses a hirer-card name, title, and profile URL", () => {
+    const html = `<h1 class="topcard__title">Engineer</h1>
+      <section class="core-section-container hiring-team">
+        <h2>Meet the hiring team</h2>
+        <div class="hirer-card">
+          <a class="hirer-card__name" href="https://www.linkedin.com/in/jane-doe">Jane Doe</a>
+          <div class="hirer-card__job-title">Engineering Manager</div>
+        </div>
+      </section>`;
+    const job = parseJobDetail(html, "999");
+    expect(job.hiringTeam).toEqual([
+      {
+        name: "Jane Doe",
+        title: "Engineering Manager",
+        profileUrl: "https://www.linkedin.com/in/jane-doe",
+      },
+    ]);
+  });
+
+  test("does not treat description /in/ links as the hiring team", () => {
+    const html = `<h1 class="topcard__title">Engineer</h1>
+      <div class="show-more-less-html__markup">See <a href="https://www.linkedin.com/in/someone">someone</a></div>`;
+    const job = parseJobDetail(html, "999");
+    expect(job.hiringTeam).toBeNull();
+  });
+});

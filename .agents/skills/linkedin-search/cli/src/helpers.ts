@@ -58,6 +58,12 @@ export interface JobCard {
   url: string
 }
 
+export interface HiringTeamMember {
+  name: string
+  title: string | null
+  profileUrl: string | null
+}
+
 export interface JobDetail extends JobCard {
   description: string | null
   seniority: string | null
@@ -65,6 +71,7 @@ export interface JobDetail extends JobCard {
   jobFunction: string | null
   industries: string | null
   applyUrl: string | null
+  hiringTeam: HiringTeamMember[] | null
 }
 
 /**
@@ -215,7 +222,81 @@ export function parseJobDetail(html: string, id: string): JobDetail {
     jobFunction: criteria["job function"] ?? null,
     industries: criteria["industries"] ?? null,
     applyUrl,
+    hiringTeam: parseHiringTeam(html),
   }
+}
+
+/**
+ * Extract the public "Meet the hiring team" / hirer-card block when guest HTML
+ * includes it. Logged-out jobs-guest pages often omit it — return null then,
+ * never invent names. Random /in/ links in the description do not count.
+ */
+export function parseHiringTeam(html: string): HiringTeamMember[] | null {
+  if (!/hiring[-_]?team|meet the hiring team|hirer-card|message-the-recruiter/i.test(html)) {
+    return null
+  }
+
+  const members: HiringTeamMember[] = []
+  const seen = new Set<string>()
+
+  const add = (nameRaw: string, titleRaw: string | null, urlRaw: string | null) => {
+    const name = clean(nameRaw)
+    if (!name || name.length < 2) return
+    const key = name.toLowerCase()
+    if (seen.has(key)) return
+    seen.add(key)
+    let profileUrl: string | null = null
+    if (urlRaw) {
+      const decoded = decodeHtmlEntities(urlRaw).split("?")[0]
+      profileUrl = decoded.includes("/in/") ? decoded : null
+    }
+    members.push({
+      name,
+      title: titleRaw ? clean(titleRaw) || null : null,
+      profileUrl,
+    })
+  }
+
+  const anchorRe = /<a\b([^>]*)>([\s\S]*?)<\/a>/gi
+  let m: RegExpExecArray | null
+  while ((m = anchorRe.exec(html)) !== null) {
+    const attrs = m[1]
+    if (!/hirer-card__name|hiring-team__name/i.test(attrs)) continue
+    const href = attrs.match(/href="([^"]+)"/i)?.[1] ?? null
+    const after = html.slice(m.index, m.index + 800)
+    const title =
+      after.match(
+        /class="[^"]*(?:hirer-card__job-title|hiring-team__title)[^"]*"[^>]*>([\s\S]*?)<\//i,
+      )?.[1] ?? null
+    add(m[2], title, href)
+  }
+
+  if (members.length === 0) {
+    const section =
+      html.match(
+        /<(?:section|div)[^>]*(?:hiring-team|message-the-recruiter)[^>]*>[\s\S]{0,8000}/i,
+      )?.[0] || html.match(/meet the hiring team[\s\S]{0,8000}/i)?.[0]
+    if (section) {
+      const titleRe =
+        /class="[^"]*base-main-card__title[^"]*"[^>]*>([\s\S]*?)<\/(?:h[1-6]|div|span|a)>/gi
+      while ((m = titleRe.exec(section)) !== null) {
+        const after = section.slice(m.index, m.index + 800)
+        const subtitle =
+          after.match(
+            /class="[^"]*base-main-card__subtitle[^"]*"[^>]*>([\s\S]*?)<\//i,
+          )?.[1] ?? null
+        const href =
+          after.match(/href="(https:\/\/(?:www\.)?linkedin\.com\/in\/[^"]+)"/i)?.[1] ??
+          section
+            .slice(Math.max(0, m.index - 400), m.index + 400)
+            .match(/href="(https:\/\/(?:www\.)?linkedin\.com\/in\/[^"]+)"/i)?.[1] ??
+          null
+        add(m[1], subtitle, href)
+      }
+    }
+  }
+
+  return members.length > 0 ? members : null
 }
 
 /** Convert a job-age in days to LinkedIn's f_TPR seconds value. */

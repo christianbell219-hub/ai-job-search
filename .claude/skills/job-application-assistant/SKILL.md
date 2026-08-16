@@ -34,6 +34,7 @@ When the user provides a job posting (URL or text), follow this workflow:
 - Follow the writing style rules in `03-writing-style.md` (critical: no em-dashes, no cliches)
 - Follow the template structure in `06-cover-letter-templates.md`
 - Create `cover_letters/cover_<company>_<role>.tex`
+- Address using hiring-contact confidence (named person only when High or user-confirmed; otherwise "Dear Hiring Manager")
 - Ensure the letter connects specific experience to the role requirements
 
 ### Step 4: Interview Preparation

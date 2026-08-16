@@ -83,11 +83,13 @@ appended per update with a date, never overwritten>
 
 Update rules: tick stage checkboxes as they are reached (add the date in parentheses), append dated entries to Notes, and only change `Status` from `in_progress` to a final value on resolution. Re-running `/outcome` on the same application is idempotent - it appends new information, never duplicates or rewrites history.
 
+4. **`contact.md`** - if `/apply` already wrote it, leave it. If it is missing and the tracker row's `contact_person` or the posting names a contact, write it in the format in `documents/README.md`. Never invent a name.
+
 ---
 
 ## Step 4: Update the Tracker
 
-Update the matched row's `status` column (e.g. `applied` → `interview` → `offer` → `hired` / `rejected` / `no response` / `offer declined` / `withdrawn`) and append a short dated note to the `notes` column. Never restructure the CSV, reorder rows, or touch other rows.
+Update the matched row's `status` column (e.g. `applied` → `interview` → `offer` → `hired` / `rejected` / `no response` / `offer declined` / `withdrawn`) and append a short dated note to the `notes` column. If `contact.md` names a person and `contact_person` is empty, copy the name into `contact_person`. Never restructure the CSV, reorder rows, or touch other rows.
 
 ---
 

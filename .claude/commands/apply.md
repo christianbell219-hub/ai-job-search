@@ -21,6 +21,46 @@ Follow these steps **exactly in order**. Do not skip steps.
 
 ---
 
+## Step 0b: Resolve hiring contact
+
+Find a named addressee with a **confidence ladder**. A wrong name on a cover letter is worse than "Dear Hiring Manager". Never invent a person.
+
+### Confidence ladder
+
+1. **High — named in the posting or apply/detail payload.** Contact block, "questions to X", email, "reports to", Jobnet `detail` `application.contactPersons`. Use for the salutation.
+2. **Medium — portal hiring-team field.** LinkedIn `detail` `hiringTeam` when guest HTML includes it. Show the user; use for the salutation **only after they confirm**.
+3. **Low — inferred from public pages.** Team/department lead on the company site, a recent "we're hiring" post that names a manager. Show as a lead. **Do not** put on the letter unless the user confirms.
+4. **Unknown.** "Dear Hiring Manager" or the posting-language equivalent (Danish: "Kære ansættelsesudvalg," / "Kære [Company],"). Still record the department if known.
+
+### How to resolve (in order)
+
+1. Extract names already in the posting text (contact, questions to, reports to, email signature).
+2. If the source URL belongs to an installed portal, run that portal's `detail` command (do not guess flags). Map:
+   - Jobnet `contactPersons` → High
+   - LinkedIn `hiringTeam` (non-null) → Medium
+   - `hiringOrganization` / `hiringOrgName` → company, **not** a person
+3. **Verify-before-use:** independently confirm any name you will print via WebFetch/WebSearch (same rule as company claims). If sources disagree, drop to Unknown.
+4. **Do not** scrape LinkedIn people search or profiles; do not guess from org charts; do not run `"[Company] [Role] hiring manager"` as sufficient evidence.
+
+Present the result in Step 1. If confidence is Medium or Low, ask whether to use the name **before** Step 2 drafts the letter. If the user does not confirm, treat as Unknown for the salutation.
+
+When drafts proceed (user says yes after Step 1), write `documents/applications/<company>_<role>/contact.md` (create the folder if needed):
+
+```markdown
+# Hiring contact: <Company> — <Role>
+
+**Name:** <full name or unknown>
+**Title:** <title or unknown>
+**Department:** <department or unknown>
+**Confidence:** high | medium | low | unknown
+**Source:** <URL or "posting text">
+**Salutation used:** <Dear …>
+```
+
+If `job_search_tracker.csv` already has a row for this company+role, fill `contact_person` when confidence is High or the user confirmed Medium/Low. Otherwise leave it for `/outcome`.
+
+---
+
 ## Step 1: DRAFTER - Evaluate Fit
 
 Read the evaluation framework:
@@ -41,7 +81,9 @@ Present the evaluation to the user with:
 2. **Experience match** - how work history maps to the role
 3. **Behavioral/culture match** - how behavioral profile fits the role/company culture
 4. **Salary benchmark** - salary index for the company (if available)
-5. **Overall fit score** and recommendation (strong fit / moderate fit / weak fit)
+5. **Location & logistics** - `work_mode` (remote / hybrid / onsite / unknown) scored with the Location & Logistics rules in `04-job-evaluation.md` (true remote matching the profile's region/timezone is PASS even if the HQ city is overseas; fake remote is FAIL)
+6. **Hiring contact** - name, title, source, confidence (High / Medium / Low / Unknown). If Medium or Low, ask whether to use the name on the letter before drafting.
+7. **Overall fit score** and recommendation (strong fit / moderate fit / weak fit)
 
 After presenting the evaluation, ask the user:
 > "Should I proceed with drafting the CV and cover letter for this role?"
@@ -75,7 +117,7 @@ Also read the most recent existing CV and cover letter files for concrete struct
 - Follow the structure from `06-cover-letter-templates.md`
 - Use the `cover.cls` template
 - Tailor the opening paragraph to the specific role and company
-- Address to a named person if available in the posting, otherwise "Dear Hiring Manager" (or equivalent in posting language)
+- Address using the Step 0b result: High (or user-confirmed Medium/Low) → "Dear [First Last],". Unknown or unconfirmed → "Dear Hiring Manager" (or equivalent in posting language). Never print an inferred name.
 - Keep to approximately one page
 - Any mention of agentic coding or AI tooling must reference **Claude Code** by name
 
@@ -148,6 +190,7 @@ Prose suggestions grouped by category. Produce each category even if your findin
 - **Company/department-specific angles** — connections between experience and the company's strategic priorities, based on your research
 - **Action-oriented reframing** — identify passive, generic, or low-energy statements and suggest action-oriented rewrites. Use this category especially for structural weakness that doesn't fit a single-sentence swap (e.g., "the whole opening paragraph reads as passive — restructure around your single strongest match to the posting").
 - **Tone and style issues** — check against `03-writing-style.md` AND `02-behavioral-profile.md`. Flag any issues with tone, formality, or voice (cliches, hedging, over-humility, inconsistent register), and specifically flag any mismatch between the letter's voice and the candidate's natural register as described in the behavioral profile.
+- **Hiring contact** — name, title, source URL, and confidence (high / medium / low / unknown). Flag a named salutation that is not High or user-confirmed. Do not invent a name. Do not scrape LinkedIn people search.
 
 **CRITICAL RULE:** All suggestions must be grounded in actual profile data. Do NOT suggest fabricating skills, experience, or achievements. If a requirement is a gap, say so honestly and suggest how to frame adjacent experience instead.
 
@@ -278,6 +321,7 @@ Summarize 3-5 key decisions made to tailor the application:
 List the files written:
 - `cv/main_<company>.tex`
 - `cover_letters/cover_<company>_<role>.tex`
+- `documents/applications/<company>_<role>/contact.md` (hiring contact + confidence)
 
 Tell the user: "Both files are ready for your review. Open them to check the final output before compiling."
 

@@ -121,9 +121,12 @@ The font wrapper is mandatory — if you just move `\begin{itemize}` outside `\l
 ## Tailoring Guidelines
 
 ### Salutation
-- If you know the hiring manager's name: "Dear [First Last],"
-- If you know the team: "Dear [Company] hiring team,"
-- Generic: "Dear [Company]," (avoid "To whom it may concern")
+Use the hiring-contact confidence from `/apply` Step 0b. Never print an inferred name.
+
+- **High** (named in the posting/detail), or **Medium/Low the user confirmed:** "Dear [First Last],"
+- **Unknown** or unconfirmed Medium/Low: "Dear Hiring Manager," (Danish posting: "Kære ansættelsesudvalg," or "Kære [Company],")
+- If you know the team but not a person: "Dear [Company] hiring team,"
+- Avoid "To whom it may concern"
 
 ### Length - Hard 1-Page Limit
 - Target: 1 page including signature block
@@ -161,7 +164,7 @@ The font wrapper is mandatory — if you just move `\begin{itemize}` outside `\l
 - [ ] Date is current
 - [ ] Fits on one page
 - [ ] Language matches the job posting language
-- [ ] Salutation is appropriate (named person if possible)
+- [ ] Salutation is appropriate (named person only at high or user-confirmed confidence; otherwise generic)
 - [ ] Headline is engaging and specific, not generic
 
 ## Submission Guidelines (Best Practice)

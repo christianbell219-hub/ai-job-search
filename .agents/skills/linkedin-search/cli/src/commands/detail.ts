@@ -40,6 +40,9 @@ export async function runDetail(opts: DetailOpts): Promise<number> {
         job.jobFunction ? `Function: ${job.jobFunction}` : "",
         job.industries ? `Industries: ${job.industries}` : "",
         "",
+        job.hiringTeam && job.hiringTeam.length
+          ? `Hiring team:\n${job.hiringTeam.map((m) => `  - ${m.name}${m.title ? ` (${m.title})` : ""}${m.profileUrl ? ` ${m.profileUrl}` : ""}`).join("\n")}`
+          : "",
         job.description || "(no description)",
         "",
         `URL: ${job.url}`,
