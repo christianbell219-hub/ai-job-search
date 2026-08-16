@@ -39,6 +39,7 @@ In targeted mode, derive a slug from the job title and company for the report fi
 2. For each row, note the `role`, `company`, and `fit_rating`. The `fit_rating` column is a 0–100 score where 100 = perfect fit. You will use it to weight gaps — a lower fit rating means the role exposed more gaps.
 3. Read `.claude/skills/job-application-assistant/01-candidate-profile.md` to get the candidate's current skills and experience.
 4. Check `upskill/` for the most recent aggregate report file (`report-YYYY-MM-DD.md`) — if one exists, note its date and load it for the diff in Step 8.
+5. **Ranked scrape gaps:** read `job_scraper/seen_jobs.json`. For every entry with `"status": "ranked"` and a non-empty `rank_gaps` array, treat each gap string as a skill/area mention. Weight that job's gaps by `(100 - rank_score) / 100` when `rank_score` is present, else `1`. These are first-class inputs — they are more precise than inferring skills from tracker `role`/`notes` alone. Skip `expired` entries. If the file is missing, continue with the tracker only.
 
 ### Targeted mode
 1. Use WebFetch to retrieve the job posting from the URL.
@@ -53,9 +54,11 @@ Extract required and preferred technical skills from each job source:
 ### Aggregate mode
 For each job row in the tracker, you do not have the full posting — use the `role`, `sector`, and `notes` columns to infer likely required skills. If the row has a `source` URL, you may optionally WebFetch it for more detail, but skip if the URL is missing or dead.
 
-Build a **skill frequency map**: for each extracted skill, count how many jobs mention it. Then apply a **fit weight**: for each job, multiply the skill count contribution by `(100 - fit_rating) / 100` — lower fit jobs contribute more to the gap score.
+Also fold in `rank_gaps` from `seen_jobs.json` (Step 2). Parse each gap bullet into a skill or area name (e.g. "No Kubernetes production experience" → Kubernetes). Count these the same way as tracker-inferred skills.
 
-Final score for each skill: `sum of (fit_weight × occurrence)` across all jobs.
+Build a **skill frequency map**: for each extracted skill, count how many jobs mention it. Then apply a **fit weight**: for each job, multiply the skill count contribution by `(100 - fit_rating) / 100` for tracker rows, or `(100 - rank_score) / 100` for ranked scrape gaps — lower fit jobs contribute more to the gap score.
+
+Final score for each skill: `sum of (fit_weight × occurrence)` across all jobs. In the heatmap **Gap Source** column, say when a gap came from `/rank` (`rank_gaps`) vs the tracker.
 
 ### Targeted mode
 Extract the explicit required and preferred skills from the fetched posting. Each skill gets equal weight (no fit weighting needed since there is only one job). List required skills before preferred skills, then sort alphabetically within each group.
@@ -246,3 +249,4 @@ After saving, print:
 5. **Print the heatmap before the learning plan.** Always show the intermediate heatmap table in the terminal before proceeding to resource search, so the user can see what you are working from.
 6. **Omit Low-priority gaps from the learning plan.** List them in the heatmap for completeness, but do not generate study resources for them unless the user asks.
 7. **Always save the report.** Do not skip the Write step even if the user seems satisfied with the terminal output.
+8. **Prefer `/rank` gaps when present.** In aggregate mode, `rank_gaps` on ranked `seen_jobs.json` entries outweigh inferred skills from a tracker `role` string. Do not ignore them.
