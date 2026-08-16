@@ -220,6 +220,7 @@ Documents cover skills, experience, education, references, and behavioral signal
 - Deal-breakers and must-haves
 - Salary expectations / baseline (optional)
 - Commute or location constraints (if not visible from CV)
+- Workplace mode (`onsite` | `hybrid` | `remote-ok` | `remote-only`), plus timezone/region and employer-country constraints if remote is in play (use the questions from Path C Section 9)
 - Job search configuration (use the questions from Path C Section 9 below)
 
 Then proceed to Step 3 to populate the non-skill files (`CLAUDE.md`, `cv/main_example.tex`, `.claude/skills/job-scraper/search-queries.md`). Step 3 will detect that the seven skill files are already populated and skip those substeps.
@@ -233,7 +234,7 @@ If the user provides a single CV/resume:
 1. Read the document thoroughly.
 2. Extract all structured information: name, contact, education, experience, skills, publications, awards.
 3. Present a summary of what was extracted.
-4. Ask follow-up questions for gaps (behavioral profile, career goals, deal-breakers, salary expectations, references).
+4. Ask follow-up questions for gaps (behavioral profile, career goals, deal-breakers, salary expectations, workplace mode / remote constraints, references).
 5. Proceed to Step 3 (file generation).
 
 ---
@@ -298,7 +299,8 @@ If not, ask behavioral questions:
 - Deal-breakers and must-haves
 - Salary expectations/baseline (optional)
 - What environments to avoid
-- Commute/location constraints
+- Commute/location constraints (onsite/hybrid office days)
+- Workplace preference: onsite, hybrid, open to remote as well as local (`remote-ok`), or remote-only
 
 ### Section 8: References (optional)
 For each reference:
@@ -312,7 +314,9 @@ Ask about:
 - **Role titles to search for:** "What job titles should I search for? For example: Data Scientist, ML Engineer, Geophysicist." Collect 3-8 specific titles.
 - **Key skills as search terms:** "Which of your skills are most likely to appear in job postings?" Pick 3-5 that are distinctive and searchable.
 - **Target companies (optional):** "Are there specific companies you'd like to monitor for openings?"
-- **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far).
+- **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far). These tiers apply to **onsite and hybrid** roles only.
+- **Workplace mode:** "Are you looking for onsite jobs, hybrid, fully remote, or both local and remote?" Record exactly one of: `onsite` | `hybrid` | `remote-ok` | `remote-only`. If they are open to remote without dropping local search, record `remote-ok` (the default when remote is acceptable). If they only want remote, record `remote-only`.
+- **Remote constraints** (ask when mode is `remote-ok` or `remote-only`): acceptable timezones or regions (e.g. EU/CET, anywhere); whether the employer must be in a given country for contracts/tax. Write these into `search-queries.md` as **Remote regions / timezones** and **Employer country constraint**. Do not use commute distance to filter true-remote jobs.
 - **Job portals:** "The framework includes tools for Danish job portals (Jobindex, Jobbank, Jobdanmark, Jobnet). Are these the right ones for you, or do you use other sites?" Note: if the user is outside Denmark, acknowledge that the built-in CLI tools are Denmark-specific and suggest they can add their own portal integrations or rely on LinkedIn/Google site-searches.
 
 **Important:** Also suggest role types the user may not have considered, based on their skill profile. For example:
@@ -329,7 +333,7 @@ This proactive suggestion step helps users discover career paths they might not 
 Once data collection is complete, generate or finish populating the following files. **For Path A**, the seven skill files are already populated by Step A7; check each before writing and skip if its content is no longer placeholder text.
 
 ### 1. Update `CLAUDE.md`
-Replace all `[PLACEHOLDER]` tokens with the user's actual information. Keep the structure, workflow, and verification checklist intact.
+Replace all `[PLACEHOLDER]` tokens with the user's actual information. Keep the structure, workflow, and verification checklist intact. Fill **Workplace** (`[YOUR_WORKPLACE_MODE]`, `[YOUR_REMOTE_CONSTRAINTS]`) from Section 9.
 
 ### 2. Populate `01-candidate-profile.md` *(Path B and C; skip if Path A populated it)*
 Write the full candidate profile with structured sections: Identity, Education, Professional Experience, Independent Projects, Technical Skills, Publications, Awards, References.
@@ -345,6 +349,8 @@ Replace skill match areas with the user's actual skills:
 
 Update career goals and motivation filters with their actual preferences.
 
+Fill **Location & Logistics** from Section 9: commute tiers for onsite/hybrid, workplace mode, remote region/timezone, and employer-country constraint. Do not leave the stock "Remote with occasional office: PASS / Requires relocation: FAIL" lines as the only guidance if the user recorded a workplace mode.
+
 ### 5. Update `05-cv-templates.md` *(Path B and C; skip if Path A populated it)*
 Add role-specific profile statement templates based on their background.
 
@@ -359,7 +365,10 @@ Replace all placeholder tokens in the search queries file with the user's actual
 - Replace `[YOUR_PRIMARY_ROLE_TYPE]`, `[YOUR_PRIMARY_JOB_TITLE]`, etc. with actual role titles
 - Replace `[YOUR_KEY_SKILL]`, `[YOUR_DOMAIN_KEYWORD_1]`, etc. with actual skills and domain terms
 - Replace `[YOUR_CITY]`, `[YOUR_COUNTRY]`, `[YOUR_REGION]` with actual location
-- Fill in the location filter tiers (ideal, acceptable, borderline, too far) based on commute constraints
+- Replace `[YOUR_WORKPLACE_MODE]` with `onsite`, `hybrid`, `remote-ok`, or `remote-only`
+- Replace `[YOUR_REMOTE_REGIONS]`, `[YOUR_EMPLOYER_COUNTRY_CONSTRAINT]`, and `[YOUR_FREEHIRE_REGIONS]` (use `none` for no employer-country constraint; use `eu,none` or similar for freehire)
+- Fill in the location filter tiers (ideal, acceptable, borderline, too far) based on commute constraints — these apply to onsite/hybrid only
+- Keep both the local pass and the remote pass in each priority category when mode is `remote-ok`; drop the local pass for `remote-only`; drop the remote pass for `onsite`
 - Organize queries into priority categories matching the user's career direction:
   - Priority 1: Their strongest/most desired role direction
   - Priority 2: Their domain expertise

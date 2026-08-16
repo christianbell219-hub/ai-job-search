@@ -18,6 +18,7 @@ This repo is a job application workspace. Claude acts as a career advisor and ap
 ### Identity
 - **Name:** [YOUR_NAME]
 - **Location:** [YOUR_CITY], [YOUR_COUNTRY] ([YOUR_COMMUTE_CONSTRAINTS])
+- **Workplace:** [YOUR_WORKPLACE_MODE] ([YOUR_REMOTE_CONSTRAINTS])
 - **Languages:** [YOUR_LANGUAGES]
 - **Status:** [YOUR_EMPLOYMENT_STATUS]
 - **LinkedIn headline:** "[YOUR_LINKEDIN_HEADLINE]"
@@ -116,7 +117,7 @@ After creating or updating a CV or cover letter, re-read the generated file and 
 - [ ] No LaTeX syntax errors (balanced braces, correct commands)
 - [ ] No spelling or grammar errors
 - [ ] Agentic coding / AI tooling references mention **Claude Code** by name
-- [ ] Cover letter is addressed to the correct person (or "Dear Hiring Manager" if unknown)
+- [ ] Cover letter is addressed to a named person only at high (or user-confirmed) hiring-contact confidence; otherwise "Dear Hiring Manager" / posting-language equivalent — never an inferred name
 - [ ] Cover letter fits approximately one page
 
 ### Compiled PDF verification (MANDATORY - never skip)

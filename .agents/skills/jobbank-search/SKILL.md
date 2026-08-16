@@ -176,4 +176,5 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 - RSS feed returns max 100 results per query. For higher counts, `meta.total` shows the true total.
 - The `detail` command fetches a full job page and extracts the JSON-LD structured data block.
 - `location` values are region codes (e.g. `2` = Storkøbenhavn), not city names.
+- **Remote:** `--remote helt` (fully remote) or `delvist` (partial). `/scrape` must pass this on remote passes rather than relying on city/region codes.
 - All filter codes are documented in `skills/jobbank-search/cli/README.md`.

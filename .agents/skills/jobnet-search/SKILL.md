@@ -203,3 +203,4 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 - `detail --format plain` strips HTML tags for readable text output.
 - Job ad detail pages on jobnet.dk: `https://jobnet.dk/job/{jobAdId}`
 - `suggestions` is tuned for Danish job titles — English terms may return empty results.
+- **Remote:** there is no search-time remote flag. Do not treat `--region` / `--postal-code` as a remote filter. Classify `work_mode` from `detail` location and description (`hjemmearbejde`, `fjernarbejde`, `remote`). `detail` `application.contactPersons` are named contacts from the posting (high-confidence hiring contact when present) — `hiringOrgName` is the employer, not a person.

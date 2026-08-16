@@ -230,7 +230,7 @@ If you prefer editing files directly instead of using `/setup`:
 | `04-job-evaluation.md` | Skill match areas, career goals, motivation filters |
 | `05-cv-templates.md` | Profile statement templates for different role types |
 | `07-interview-prep.md` | Your STAR examples from actual experience |
-| `search-queries.md` | Job search queries for your skills and location |
+| `search-queries.md` | Job search queries for your skills, location, and workplace mode (`onsite` / `hybrid` / `remote-ok` / `remote-only`) |
 
 ### Updating your search queries
 
@@ -240,7 +240,7 @@ As your priorities evolve, you can reconfigure just the job search without re-ru
 /setup --section search
 ```
 
-This re-runs the search configuration interview: which roles to target, which skills to search for, which locations, and which portals. It also suggests role types you may not have considered based on your profile.
+This re-runs the search configuration interview: which roles to target, which skills to search for, workplace mode (`onsite` / `hybrid` / `remote-ok` / `remote-only`), locations, and which portals. It also suggests role types you may not have considered based on your profile.
 
 ### LaTeX templates
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { runSearch } from "../src/commands/search";
+import { buildSearchUrl, runSearch } from "../src/commands/search";
+import { workTypeFlag } from "../src/helpers";
 
 const originalFetch = globalThis.fetch;
 const originalStdoutWrite = process.stdout.write;
@@ -38,5 +39,20 @@ describe("runSearch", () => {
 
     expect(code).toBe(0);
     expect(JSON.parse(stdout).results).toHaveLength(0);
+  });
+
+  test("--remote remote sets f_WT=2 and can use location=Remote", () => {
+    expect(workTypeFlag("remote")).toBe("2");
+    const url = buildSearchUrl({
+      query: "engineer",
+      location: "Remote",
+      jobage: 14,
+      remote: "remote",
+      page: 1,
+      format: "json",
+    });
+    expect(url).toContain("f_WT=2");
+    expect(url).toContain("location=Remote");
+    expect(url).toContain("keywords=engineer");
   });
 });

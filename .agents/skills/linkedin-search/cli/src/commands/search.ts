@@ -18,7 +18,7 @@ export interface SearchOpts {
   format: "json" | "table" | "plain"
 }
 
-function buildUrl(opts: SearchOpts): string {
+export function buildSearchUrl(opts: SearchOpts): string {
   const params = new URLSearchParams()
   if (opts.query) params.set("keywords", opts.query)
   if (opts.location) params.set("location", opts.location)
@@ -53,7 +53,7 @@ function renderTable(cards: JobCard[]): string {
 
 export async function runSearch(opts: SearchOpts): Promise<number> {
   try {
-    const html = await htmlFetch(buildUrl(opts))
+    const html = await htmlFetch(buildSearchUrl(opts))
     let cards = parseJobCards(html)
     if (opts.limit !== undefined && opts.limit >= 0) cards = cards.slice(0, opts.limit)
 

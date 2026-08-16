@@ -39,11 +39,19 @@ Optional arguments:
 
 1. Read `job_scraper/seen_jobs.json` (create if missing - start with `{"seen": {}}`)
 2. Read `job_search_tracker.csv` to extract already-applied companies+roles
-3. Read `search-queries.md` (this directory) for the search strategy
+3. Read `search-queries.md` (this directory) for the search strategy, including the **Workplace filter** (`Mode`, remote regions/timezones, employer-country constraint, portal remote flags)
 
 ### Step 1: Search
 
-Read `search-queries.md` (this directory) for the search strategy. By default, run the top 3 priority query categories. If the user said "broad", run all categories. If the user specified a focus area (e.g. "data science"), prioritize queries from that category.
+Read `search-queries.md` (this directory) for the search strategy. By default, run the top 3 priority query categories. If the user said "broad", run all categories. If the user specified a focus area (e.g. "data science"), prioritize queries from that category. If they said "remote", run the remote pass only.
+
+Read **Workplace filter → Mode** before constructing any CLI call:
+
+- `onsite` — local/commute queries only; do not pass remote flags
+- `hybrid` — local queries; pass a portal's partial-remote flag only if the SKILL.md documents one (e.g. Jobbank `--remote delvist`)
+- `remote-ok` — run **both** a local commute pass and a remote pass
+- `remote-only` — remote pass only; do not append city to keyword queries
+- Missing or still `[YOUR_WORKPLACE_MODE]` — treat as `remote-ok` if the profile/deal-breakers mention remote work, otherwise `onsite`
 
 **Use the installed CLI tools as the primary search mechanism.** Fall back to `WebSearch` only for portals that do not have a CLI skill, or if `bun` is unavailable on the system.
 
@@ -63,9 +71,15 @@ For each installed portal skill:
 
 1. Read its `SKILL.md` to find the correct `bun run …` invocation and supported flags.
 2. Translate the query terms from `search-queries.md` into that portal's flag format (e.g. `--key`, `--search-string`, `--query`, filter codes — whatever the portal's SKILL.md specifies).
-3. Scope to the last 14 days using the portal's supported recency flag (`--jobage`, `--since <YYYY-MM-DD>`, `--order PublicationDate`, etc. — as documented per portal).
-4. Cap results to ~20 per call using the portal's limit flag.
-5. Use `--format json` for machine-readable output.
+3. **Workplace flags:** when Mode is `remote-only` or `remote-ok`, pass that portal's **documented** remote flag from `search-queries.md` → Portal remote flags (and the portal's own SKILL.md). Do not guess a city keyword as a substitute except where the SKILL.md says the portal has no remote parameter (Jobindex keyword pass without city; Jobnet/Jobdanmark post-filter after `detail`). Shipped mapping:
+   - **linkedin-search:** global remote pass `-l "Remote" --remote remote`; optional second pass `-l "<city from search-queries>" --remote remote` for remote-in-this-market. Never pass a city as `-l` without `--remote` on a remote pass.
+   - **freehire-search:** `--remote remote` and `--region <codes>,none` so unresolved-geo remotes are not dropped.
+   - **jobbank-search:** `--remote helt` (or `delvist` when Mode is `hybrid`).
+   - **jobindex-search:** no API remote filter — on a remote pass do **not** append city to `--query`; add a keyword pass with `remote` / `hjemmearbejde` and classify `work_mode` from `detail` text.
+   - **jobnet-search / jobdanmark-search:** no search-time remote flag — do not restrict `--region`/`--municipality` on a remote-only pass; classify from location/description after `detail`.
+4. Scope to the last 14 days using the portal's supported recency flag (`--jobage`, `--since <YYYY-MM-DD>`, `--order PublicationDate`, etc. — as documented per portal).
+5. Cap results to ~20 per call using the portal's limit flag.
+6. Use `--format json` for machine-readable output.
 
 Run all portal CLI calls in parallel where possible using the Agent tool. Collect all `results` arrays into a single pool for Step 2, keeping each result tagged with its source portal skill (for Step 2 `detail` lookups).
 
@@ -87,14 +101,22 @@ For each promising result from Step 1:
 **From CLI results:** Search output already includes title, company, location, date,
 and URL. For jobs worth a deeper look, fetch full detail with that portal's `detail`
 command (see its SKILL.md — do not guess flags) to extract **key requirements**,
-**application deadline**, and a brief description snippet.
+**application deadline**, a brief description snippet, **work_mode**, and any **named
+contact** already in the posting or detail payload (Jobnet `contactPersons`, LinkedIn
+`hiringTeam`, a "contact:" line). Do not web-search for a hiring manager during scrape.
 
 **From WebSearch results:** Use `WebFetch` on the posting URL and extract the same
 fields manually.
 
+Classify `work_mode` as `remote` | `hybrid` | `onsite` | `unknown` from, in order:
+the portal's workplace field if present, location text (`Remote`, `Fjernarbejde`,
+`Hjemmearbejde`, `Hybrid`, `On-site`), then description. An HQ city in another
+country does **not** make the job `onsite` when the posting is fully remote.
+
 For every candidate:
 - Skip if the URL or company+title combo already exists in `seen_jobs.json`
 - Skip if the company+role already appears in `job_search_tracker.csv`
+- Apply **Rule 3** (workplace + commute) before presenting
 
 ### Step 3: Quick Fit Assessment
 
@@ -116,7 +138,9 @@ For each new job, do a rapid fit check (NOT the full evaluation from `04-job-eva
       "url": "...",
       "first_seen": "YYYY-MM-DD",
       "fit": "high/medium/low",
-      "status": "new/skipped/evaluated/ranked/expired"
+      "status": "new/skipped/evaluated/ranked/expired",
+      "work_mode": "remote/hybrid/onsite/unknown",
+      "hiring_contact": null
     }
   }
 }
@@ -137,7 +161,10 @@ Found X new positions (Y high, Z medium, W low match).
 
 | # | Fit | Title | Company | Location | Deadline | URL |
 |---|-----|-------|---------|----------|----------|-----|
-| 1 | High | ... | ... | ... | ... | [Link](...) |
+| 1 | High | ... | ... | Remote (EU) | ... | [Link](...) |
+
+Location must reflect `work_mode`: `Remote ([region])`, `Hybrid, [city]`, or the
+office city — not an overseas HQ city for a fully remote role.
 
 ### High-Match Highlights
 For each high-match job, add 2-3 bullet points:
@@ -163,7 +190,7 @@ If the user decides to apply to any job, add a row to `job_search_tracker.csv`.
 
 1. **Never fabricate job postings.** Only present jobs from actual CLI search/detail output or WebSearch/WebFetch results.
 2. **Respect deduplication.** Always check seen_jobs.json AND job_search_tracker.csv before presenting.
-3. **Focus on configured geographic area.** Skip jobs that require relocation or are clearly outside commute range.
+3. **Workplace-aware geography.** Read Mode from `search-queries.md`. Skip **onsite** (and hybrid-with-required-office-days) jobs that are outside the commute tiers. Do **not** skip jobs classified `remote` that match Remote regions/timezones and Employer country constraint — an HQ city overseas is not relocation. Skip **fake remote**: title or location says remote but the posting requires relocation or a specific office 5 days a week. For `onsite` mode, skip true-remote jobs. For `remote-only` mode, skip onsite jobs outside any stated exception.
 4. **Only open positions.** Skip postings with expired deadlines or those marked as closed.
 5. **Be efficient with detail fetches.** Don't run `detail` or WebFetch on every search hit — pre-filter by title/snippet, then fetch only promising matches.
 6. **Parallel searches.** Run portal CLI searches in parallel; use WebSearch only for gaps the CLIs don't cover.

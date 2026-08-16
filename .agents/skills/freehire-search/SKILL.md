@@ -171,3 +171,6 @@ dictionaries never guess). So:
   live values (with counts) for a query before filtering.
 - The API retries 429/5xx with exponential backoff; an unreachable API exits
   non-zero with a clear message (best-effort service, see the dependency note above).
+- **Remote search:** pass `--remote remote` and include `none` in `--region` (e.g.
+  `--region eu,none`) so remotes with unresolved geography are not dropped. See
+  "Partial data" above.

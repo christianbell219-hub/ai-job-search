@@ -114,7 +114,7 @@ bun run src/cli.ts search --query "data engineer" --page 2 --format table
 - `url` — full Jobindex.dk URL for the listing.
 - `total` in `meta` — parsed from `hitcount_html` (Danish thousands separator `.` is stripped before parsing, e.g. `18.903` → `18903`).
 
-> **Note on area filtering**: The Jobindex API does not reliably support area/region filtering via query parameters. `area` and `geoareaid` params are silently ignored. To filter by location, use `--query` with a city name (e.g. `--query "python aarhus"`) or apply `--limit` and filter the JSON output externally.
+> **Note on area filtering**: The Jobindex API does not reliably support area/region filtering via query parameters. `area` and `geoareaid` params are silently ignored. To filter **onsite** jobs by location, use `--query` with a city name (e.g. `--query "python aarhus"`). For **remote** search, omit the city (hjemmearbejde is UI-only, not an API param) and use keywords such as `remote` or `hjemmearbejde`, then classify from `detail`.
 
 ---
 

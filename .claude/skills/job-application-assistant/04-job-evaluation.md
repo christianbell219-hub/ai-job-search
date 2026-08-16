@@ -47,10 +47,28 @@ Does the role and company culture match the behavioral profile?
 **Red flags to research:** Department disorganization, work dominated by maintenance over development, poor chemistry with leadership, culture mismatches. Check reviews, media coverage, LinkedIn connections, and network contacts for insider perspective.
 
 ### 4. Location & Logistics (Pass/Fail + Notes)
-- Within commute range: PASS
-- Remote with occasional office: PASS
-- Requires relocation: FAIL (deal-breaker)
+
+Score from the posting's **workplace reality**, not the HQ city string. Read the candidate's workplace mode, commute tiers, remote regions/timezones, and employer-country constraint from `04-job-evaluation.md` (this file, filled by `/setup`) and `.claude/skills/job-scraper/search-queries.md`.
+
+**Workplace mode** (filled by `/setup`): [YOUR_WORKPLACE_MODE]
+**Remote regions / timezones:** [YOUR_REMOTE_REGIONS]
+**Employer country constraint:** [YOUR_EMPLOYER_COUNTRY_CONSTRAINT]
+
+Classify the posting first: `remote` | `hybrid` | `onsite` | `unknown`. Title/location "Remote" is not enough if the body requires relocation or 5 office days (fake remote).
+
+Then:
+
+- Onsite (or hybrid with required office days) within commute range: PASS
+- True remote matching remote regions/timezones and employer-country constraint: **PASS even if the posting's city string is another country**
+- Remote with occasional / optional office, no relocation required: PASS (when mode is `remote-ok`, `remote-only`, or `hybrid`)
+- Hybrid whose required office is outside commute: FLAG or FAIL per the commute tiers (FLAG if borderline, FAIL if too far)
+- Onsite requiring relocation: FAIL (deal-breaker)
+- Fake remote (says remote, requires relocation or a specific office 5 days a week): FAIL
 - Frequent international travel: FLAG (discuss with user)
+- True remote when mode is `onsite`: FAIL
+- Onsite when mode is `remote-only`: FAIL
+
+Worked example: posting location `San Francisco, CA`, description "fully remote, EU timezone", candidate mode `remote-ok` with regions `EU / CET` → Location **PASS**, not FAIL.
 
 ### 5. Career Alignment & Motivation (0-100)
 Does this role advance career goals and contain tasks that energize?

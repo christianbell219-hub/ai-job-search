@@ -28,6 +28,7 @@ Follow these steps **in order**.
 5. Read the scoring framework and profile **once**:
    - `.claude/skills/job-application-assistant/04-job-evaluation.md`
    - `.claude/skills/job-application-assistant/01-candidate-profile.md`
+   - `.claude/skills/job-scraper/search-queries.md` (Workplace filter: mode, remote regions, employer-country constraint, commute tiers)
 
 State how many jobs will be ranked before proceeding.
 
@@ -37,7 +38,7 @@ State how many jobs will be ranked before proceeding.
 
 Dispatch parallel `general-purpose` agents via the **Agent tool**, ~5 jobs per agent (a single agent is fine for ≤5 jobs). Token-efficiency rules, consistent with `/apply`:
 
-- Pass each agent everything it needs **inline in the prompt** - the job list (title, company, URL) and a compact scoring rubric extracted from the files you read in Step 1: the strong/moderate/weak skill match areas, direct/adjacent experience domains, behavioral thrive/drain factors, career goals, deal-breakers, and the location constraints. Do **not** make agents re-read the profile files.
+- Pass each agent everything it needs **inline in the prompt** - the job list (title, company, URL, stored `work_mode` if present) and a compact scoring rubric extracted from the files you read in Step 1: the strong/moderate/weak skill match areas, direct/adjacent experience domains, behavioral thrive/drain factors, career goals, deal-breakers, workplace mode (`onsite` | `hybrid` | `remote-ok` | `remote-only`), remote regions/timezones, employer-country constraint, and onsite commute tiers. Also pass the Location & Logistics rules from `04-job-evaluation.md` verbatim, including the San Francisco / EU-remote worked example. Do **not** make agents re-read the profile files.
 - Agents fetch each posting URL with WebFetch and score **only from actually fetched content**. If a URL is dead, redirects to a listing page, or the posting has expired, the agent marks that job `expired` - it never scores from the title alone and never fabricates posting content.
 - Scope is triage: posting text vs. rubric. **No company research, no salary lookup, no web searches** - that depth belongs to `/apply`.
 
@@ -49,6 +50,7 @@ Each agent returns a JSON array, one object per job:
   "status": "scored" | "expired",
   "scores": { "technical": 0-100, "experience": 0-100, "behavioral": 0-100, "career": 0-100 },
   "location": "PASS" | "FAIL" | "FLAG",
+  "work_mode": "remote" | "hybrid" | "onsite" | "unknown",
   "deadline": "YYYY-MM-DD" | null,
   "strengths": ["1-3 bullets, grounded in the posting text"],
   "gaps": ["1-3 bullets, honest"],
@@ -58,6 +60,12 @@ Each agent returns a JSON array, one object per job:
 
 Scoring uses the dimension definitions from `04-job-evaluation.md` verbatim. The honesty rule applies to triage too: gaps are stated, never smoothed over, and a posting that is a poor fit gets a low score even if it looks prestigious.
 
+**Location scoring (do not treat HQ city as the job location):**
+- Classify `work_mode` from the posting body, not only the location field.
+- True remote matching the profile's remote regions/timezones → `PASS` even when the city string is another country.
+- Fake remote (remote in the title, relocation or 5 office days in the body) → `FAIL`.
+- Onsite relocation → `FAIL`. Hybrid with office days outside commute → `FLAG` or `FAIL` per `04-job-evaluation.md`.
+
 ---
 
 ## Step 3: Aggregate and Rank
@@ -66,7 +74,7 @@ Back in the main context, for each scored job:
 
 1. Compute the overall score with the weighting from `04-job-evaluation.md` (Technical 30%, Experience 25%, Behavioral 15%, Career Alignment 30%; location is unweighted).
 2. Map to the framework's verdict bands (Strong Fit 75+, Good Fit 60-74, Moderate Fit 45-59, Weak Fit 30-44, Poor Fit <30).
-3. **Location veto:** `FAIL` (e.g. requires relocation) excludes the job from the shortlist no matter the score - list it separately with the reason. `FLAG` (e.g. heavy travel) stays in the ranking but carries a visible ⚠ marker for the user to judge.
+3. **Location veto:** `FAIL` (onsite relocation, fake remote, or a workplace-mode mismatch such as onsite when the profile is `remote-only`) excludes the job from the shortlist no matter the score - list it separately with the reason. `FLAG` (e.g. heavy travel, hybrid office days at the commute borderline) stays in the ranking but carries a visible ⚠ marker for the user to judge. Do **not** veto true remote solely because the posting lists an overseas HQ city.
 4. **Deadline urgency:** a deadline within 7 days gets a 🔥 marker and wins ties. A deadline that has already passed moves the job to `expired`.
 
 Sort by overall score (descending), urgency as tiebreaker.
@@ -77,7 +85,7 @@ Sort by overall score (descending), urgency as tiebreaker.
 
 Update `job_scraper/seen_jobs.json` in place - these fields are additive to the scraper's schema:
 
-- Ranked jobs: set `"status": "ranked"` and add `"rank_score": <overall>`, `"rank_verdict": "<band>"`, `"rank_date": "YYYY-MM-DD"`
+- Ranked jobs: set `"status": "ranked"` and add `"rank_score": <overall>`, `"rank_verdict": "<band>"`, `"rank_date": "YYYY-MM-DD"`. Keep existing `work_mode` / `hiring_contact` fields; if the agent returned `work_mode`, write it when the scrape left it `unknown`.
 - Dead or past-deadline jobs: set `"status": "expired"`
 
 Do not modify `job_search_tracker.csv` - that file records applications, and `/rank` never applies. Re-running `/rank` is idempotent: already-`ranked` jobs are skipped unless `--all` re-scores them.
@@ -106,6 +114,7 @@ Ranked <N> new postings (<X> shortlisted, <Y> below threshold, <Z> expired/vetoe
 
 ### Excluded
 - <Title> at <Company> - location FAIL: requires relocation
+- <Title> at <Company> - location FAIL: fake remote (office 5 days)
 - <Title> at <Company> - expired <date>
 ```
 
@@ -122,6 +131,6 @@ Rules for the presentation:
 
 1. **Never rank unfetched postings.** A job whose posting cannot be retrieved is marked expired, not guessed at.
 2. **Triage depth only.** No company research, no salary lookups, no reviewer agents - `/rank` exists to be cheap enough to run on every scrape batch.
-3. **Deal-breakers veto scores.** A 90-point job that fails a location deal-breaker is excluded, not ranked first.
+3. **Deal-breakers veto scores.** A 90-point job that fails a location deal-breaker is excluded, not ranked first. True remote that matches the profile's region/timezone is not a location deal-breaker just because the HQ city is overseas.
 4. **Honest scoring.** Gaps are reported per job; a low-scoring posting is presented as such. The score bands and weights come from `04-job-evaluation.md` - if the user disagrees with a ranking, the fix is updating their profile or the framework, not bending scores.
 5. **State stays consistent.** `seen_jobs.json` fields are only added, never restructured, so `/scrape`'s dedup keeps working; the tracker is read-only for this command.
