@@ -32,8 +32,10 @@ GET https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/<jobId>
 
 Returns a single job's HTML: title (`top-card-layout__title`), company
 (`topcard__org-name-link`), location (`topcard__flavor--bullet`), the rich description
-(`show-more-less-html__markup` / `description__text`), and job-criteria items
-(seniority, employment type, job function, industries).
+(`show-more-less-html__markup` / `description__text`), job-criteria items
+(seniority, employment type, job function, industries), and closed-job banners
+("No longer accepting applications", "This job is no longer available"). The CLI
+exposes these as `closed` / `closedReason` on the `detail` JSON.
 
 ## Notes
 

@@ -104,6 +104,9 @@ command (see its SKILL.md — do not guess flags) to extract **key requirements*
 **application deadline**, a brief description snippet, **work_mode**, and any **named
 contact** already in the posting or detail payload (Jobnet `contactPersons`, LinkedIn
 `hiringTeam`, a "contact:" line). Do not web-search for a hiring manager during scrape.
+If LinkedIn `detail` returns `"closed": true` or exits `NOT_FOUND`, set that job's
+`status` to `expired` and do not present it. Same for other portals whose `detail` or
+fetched page says the listing is closed or the deadline has passed.
 
 **From WebSearch results:** Use `WebFetch` on the posting URL and extract the same
 fields manually.
@@ -146,7 +149,7 @@ For each new job, do a rapid fit check (NOT the full evaluation from `04-job-eva
 }
 ```
 
-`/rank` extends this schema additively: ranked entries also carry `rank_score` (0–100 overall score), `rank_verdict` (fit band, e.g. "strong fit"), and `rank_date` (ISO date of ranking). The `status` field is set to `"ranked"`. Do not drop these fields when re-writing entries.
+`/rank` extends this schema additively: ranked entries also carry `rank_score` (0–100 overall score), `rank_verdict` (fit band, e.g. "strong fit"), `rank_date` (ISO date of ranking), `rank_gaps` (array of honest gap strings), and `rank_strengths`. The `status` field is set to `"ranked"`. Do not drop these fields when re-writing entries.
 
 2. Only present jobs NOT already in the seen list or tracker.
 

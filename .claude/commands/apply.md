@@ -17,7 +17,9 @@ Follow these steps **exactly in order**. Do not skip steps.
 - If `$ARGUMENTS` looks like a URL, use `WebFetch` to retrieve the job posting content.
 - If it is pasted text, use it directly.
 - Extract: **company name**, **role title**, **department** (if mentioned), **location**, and **language** of the posting (Danish or English).
-- Store these for use throughout the workflow.
+- **Ghost / closed check (before any drafting):** if the fetched page or pasted text says the job is closed ("no longer accepting applications", "no longer available", "has expired", deadline in the past), **stop**. Tell the user it is a dead posting. If this URL exists in `job_scraper/seen_jobs.json`, set `"status": "expired"`. Do not proceed to Step 0b or Step 1.
+- If the URL is a LinkedIn `jobs/view` (or numeric job id), also run `bun run .agents/skills/linkedin-search/cli/src/cli.ts detail <id> --format json`. If the process exits `NOT_FOUND` or the JSON has `"closed": true`, treat it the same as above. Keep volume low (personal-use ToS).
+- Store the extracted fields for use throughout the workflow.
 
 ---
 

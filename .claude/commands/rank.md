@@ -40,6 +40,7 @@ Dispatch parallel `general-purpose` agents via the **Agent tool**, ~5 jobs per a
 
 - Pass each agent everything it needs **inline in the prompt** - the job list (title, company, URL, stored `work_mode` if present) and a compact scoring rubric extracted from the files you read in Step 1: the strong/moderate/weak skill match areas, direct/adjacent experience domains, behavioral thrive/drain factors, career goals, deal-breakers, workplace mode (`onsite` | `hybrid` | `remote-ok` | `remote-only`), remote regions/timezones, employer-country constraint, and onsite commute tiers. Also pass the Location & Logistics rules from `04-job-evaluation.md` verbatim, including the San Francisco / EU-remote worked example. Do **not** make agents re-read the profile files.
 - Agents fetch each posting URL with WebFetch and score **only from actually fetched content**. If a URL is dead, redirects to a listing page, or the posting has expired, the agent marks that job `expired` - it never scores from the title alone and never fabricates posting content.
+- **Ghost check:** if the URL is LinkedIn, the agent should run `bun run .agents/skills/linkedin-search/cli/src/cli.ts detail <id> --format json` (personal use, keep volume low) instead of guessing from the search snippet. `"closed": true` or a `NOT_FOUND` stderr JSON means `expired`. Other portals: treat a dead WebFetch, an expired deadline, or explicit "no longer accepting / stillingen er besat" language as `expired`.
 - Scope is triage: posting text vs. rubric. **No company research, no salary lookup, no web searches** - that depth belongs to `/apply`.
 
 Each agent returns a JSON array, one object per job:
@@ -85,7 +86,7 @@ Sort by overall score (descending), urgency as tiebreaker.
 
 Update `job_scraper/seen_jobs.json` in place - these fields are additive to the scraper's schema:
 
-- Ranked jobs: set `"status": "ranked"` and add `"rank_score": <overall>`, `"rank_verdict": "<band>"`, `"rank_date": "YYYY-MM-DD"`. Keep existing `work_mode` / `hiring_contact` fields; if the agent returned `work_mode`, write it when the scrape left it `unknown`.
+- Ranked jobs: set `"status": "ranked"` and add `"rank_score": <overall>`, `"rank_verdict": "<band>"`, `"rank_date": "YYYY-MM-DD"`, `"rank_gaps": [<the agent's gaps array>]`, `"rank_strengths": [<the agent's strengths array>]`. Keep existing `work_mode` / `hiring_contact` fields; if the agent returned `work_mode`, write it when the scrape left it `unknown`. `/upskill` reads `rank_gaps` in aggregate mode — do not drop them on later rewrites.
 - Dead or past-deadline jobs: set `"status": "expired"`
 
 Do not modify `job_search_tracker.csv` - that file records applications, and `/rank` never applies. Re-running `/rank` is idempotent: already-`ranked` jobs are skipped unless `--all` re-scores them.
@@ -133,4 +134,4 @@ Rules for the presentation:
 2. **Triage depth only.** No company research, no salary lookups, no reviewer agents - `/rank` exists to be cheap enough to run on every scrape batch.
 3. **Deal-breakers veto scores.** A 90-point job that fails a location deal-breaker is excluded, not ranked first. True remote that matches the profile's region/timezone is not a location deal-breaker just because the HQ city is overseas.
 4. **Honest scoring.** Gaps are reported per job; a low-scoring posting is presented as such. The score bands and weights come from `04-job-evaluation.md` - if the user disagrees with a ranking, the fix is updating their profile or the framework, not bending scores.
-5. **State stays consistent.** `seen_jobs.json` fields are only added, never restructured, so `/scrape`'s dedup keeps working; the tracker is read-only for this command.
+5. **State stays consistent.** `seen_jobs.json` fields are only added, never restructured, so `/scrape`'s dedup keeps working; the tracker is read-only for this command. `rank_gaps` must survive re-writes so `/upskill` can weight them.

@@ -88,3 +88,34 @@ describe("parseHiringTeam (via parseJobDetail)", () => {
     expect(job.hiringTeam).toBeNull();
   });
 });
+
+describe("parseClosedJob (via parseJobDetail)", () => {
+  test("open posting is not closed", () => {
+    const html = `<h1 class="topcard__title">Engineer</h1>
+      <div class="show-more-less-html__markup">We are hiring a backend engineer.</div>`;
+    const job = parseJobDetail(html, "999");
+    expect(job.closed).toBe(false);
+    expect(job.closedReason).toBeNull();
+  });
+
+  test("detects no longer accepting applications", () => {
+    const html = `<h1 class="topcard__title">Engineer</h1>
+      <span>No longer accepting applications</span>`;
+    const job = parseJobDetail(html, "999");
+    expect(job.closed).toBe(true);
+    expect(job.closedReason).toBe("no longer accepting applications");
+  });
+
+  test("detects no longer available", () => {
+    const html = `<div>This job is no longer available</div>`;
+    const job = parseJobDetail(html, "999");
+    expect(job.closed).toBe(true);
+    expect(job.closedReason).toBe("no longer available");
+  });
+
+  test("empty HTML is closed as not found", () => {
+    const job = parseJobDetail("", "999");
+    expect(job.closed).toBe(true);
+    expect(job.closedReason).toBe("not found");
+  });
+});

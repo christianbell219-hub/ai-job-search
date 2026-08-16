@@ -72,6 +72,8 @@ export interface JobDetail extends JobCard {
   industries: string | null
   applyUrl: string | null
   hiringTeam: HiringTeamMember[] | null
+  closed: boolean
+  closedReason: string | null
 }
 
 /**
@@ -207,6 +209,7 @@ export function parseJobDetail(html: string, id: string): JobDetail {
 
   const applyMatch = html.match(/class="topcard__link[^"]*"[^>]*href="([^"]+)"/i)
   const applyUrl = applyMatch ? decodeHtmlEntities(applyMatch[1]).split("?")[0] : null
+  const closed = parseClosedJob(html)
 
   return {
     id,
@@ -223,7 +226,31 @@ export function parseJobDetail(html: string, id: string): JobDetail {
     industries: criteria["industries"] ?? null,
     applyUrl,
     hiringTeam: parseHiringTeam(html),
+    closed: closed.closed,
+    closedReason: closed.closedReason,
   }
+}
+
+/**
+ * Detect ghost / closed LinkedIn postings from guest HTML. Phrases are matched
+ * on the visible text; a 404 is handled by htmlFetch returning "" (NOT_FOUND).
+ */
+export function parseClosedJob(html: string): { closed: boolean; closedReason: string | null } {
+  if (!html || !html.trim()) {
+    return { closed: true, closedReason: "not found" }
+  }
+  const visible = decodeHtmlEntities(stripTags(html)).replace(/\s+/g, " ")
+  const patterns: Array<[RegExp, string]> = [
+    [/no longer accepting applications/i, "no longer accepting applications"],
+    [/this job is no longer available/i, "no longer available"],
+    [/this job has expired/i, "expired"],
+    [/job posting is expired/i, "expired"],
+    [/no longer accepting applicants/i, "no longer accepting applications"],
+  ]
+  for (const [re, reason] of patterns) {
+    if (re.test(visible) || re.test(html)) return { closed: true, closedReason: reason }
+  }
+  return { closed: false, closedReason: null }
 }
 
 /**
