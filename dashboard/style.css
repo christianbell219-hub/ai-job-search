@@ -248,6 +248,67 @@ code, kbd, .num {
   font-weight: 500;
 }
 
+.needs {
+  margin: 0 0 1.6rem;
+}
+.needs .panel {
+  padding: 0.95rem 1.05rem 1.05rem;
+}
+.needs h2 {
+  margin: 0 0 0.25rem;
+}
+.needs-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.needs-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 0.7rem;
+  border: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.02);
+}
+.needs-item .kind {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 0.12rem 0.45rem;
+  border-radius: 0.35rem;
+  background: var(--accent-dim);
+  color: var(--accent);
+}
+.needs-item .kind.silent { color: var(--silent); }
+.needs-item .kind.offer { color: var(--offer); }
+.needs-item .kind.drafted_deadline,
+.needs-item .kind.drafted_stale { color: var(--silent); }
+.needs-item .kind.ranked { color: var(--interview); background: rgb(138 163 122 / 0.16); }
+.needs-item .who {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-size: 0.9rem;
+}
+.needs-item .why {
+  flex: 1 1 12rem;
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+.due-flag {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--silent);
+}
+.due-flag.past { color: #c07060; }
+
 .board {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));

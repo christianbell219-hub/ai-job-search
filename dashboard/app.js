@@ -41,6 +41,8 @@ function render(data) {
     .map(([label, value]) => `<div class="metric"><b>${value}</b><span>${label}</span></div>`)
     .join("");
 
+  renderNeeds(data.needs_action || []);
+
   const board = document.getElementById("board");
   board.innerHTML = BUCKETS.map(([key, label]) => {
     const items = data.applications.filter((app) => app.bucket === key);
@@ -81,19 +83,17 @@ function render(data) {
     )
     .join("");
 
-  board.querySelectorAll("[data-copy]").forEach(bindCopy);
-  backlog.querySelectorAll("[data-copy]").forEach(bindCopy);
+  document.querySelectorAll("[data-copy]").forEach(bindCopy);
   board.querySelectorAll("select[data-status]").forEach((sel) => {
     sel.addEventListener("change", async () => {
-      await fetch("/api/status", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          company: sel.dataset.company,
-          role: sel.dataset.role,
-          status: sel.value,
-        }),
-      });
+      await postStatus(sel.dataset.company, sel.dataset.role, sel.value);
+      load();
+    });
+  });
+  board.querySelectorAll("button[data-submit]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      await postStatus(btn.dataset.company, btn.dataset.role, "applied");
       load();
     });
   });
@@ -109,6 +109,41 @@ function render(data) {
   });
 }
 
+function renderNeeds(actions) {
+  const section = document.getElementById("needs");
+  if (!actions.length) {
+    section.classList.add("hidden");
+    section.innerHTML = "";
+    return;
+  }
+  section.classList.remove("hidden");
+  const items = actions
+    .map((a) => {
+      const who = [a.role, a.company].filter(Boolean).join(" · ");
+      const label = (a.kind || "action").replace(/_/g, " ");
+      return `<li class="needs-item">
+        <span class="kind ${esc(a.kind)}">${esc(label)}</span>
+        <span class="who">${esc(who)}</span>
+        <p class="why">${esc(a.reason)}</p>
+        <button type="button" data-copy="${esc(a.command)}">Copy</button>
+      </li>`;
+    })
+    .join("");
+  section.innerHTML = `<div class="panel">
+    <h2>Needs action</h2>
+    <p class="hint">Copy into Claude. This board does not draft or send mail.</p>
+    <ul class="needs-list">${items}</ul>
+  </div>`;
+}
+
+async function postStatus(company, role, status) {
+  await fetch("/api/status", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ company, role, status }),
+  });
+}
+
 function cardHtml(app, index) {
   const options = STATUSES.map(
     (s) => `<option value="${s}" ${s === app.status ? "selected" : ""}>${s}</option>`
@@ -119,13 +154,31 @@ function cardHtml(app, index) {
   if (app.cover_pdf) links.push(`<a href="/file?path=${encodeURIComponent(app.cover_pdf)}" target="_blank">Letter</a>`);
   if (app.source) links.push(`<a href="${esc(app.source)}" target="_blank" rel="noopener">Posting</a>`);
   const cmds = app.commands || {};
+  const due =
+    app.deadline_urgency === "past"
+      ? `<span class="due-flag past">deadline passed</span>`
+      : app.deadline_urgency === "soon"
+        ? `<span class="due-flag">deadline soon</span>`
+        : "";
+  const age =
+    app.status === "drafted" && app.days_open != null
+      ? ` · drafted ${app.days_open}d`
+      : app.days_open != null && app.bucket === "silent"
+        ? ` · ${app.days_open}d quiet`
+        : "";
+  const submitBtn =
+    app.status === "drafted"
+      ? `<button type="button" data-submit data-company="${esc(app.company)}" data-role="${esc(app.role)}">Mark submitted</button>`
+      : "";
+  const pillLabel = app.status === "drafted" ? "drafted" : app.bucket;
   return `<div class="card-shell" style="--i:${index}">
     <article class="card ${app.bucket}">
-      <span class="pill">${esc(app.bucket)}</span>
+      <span class="pill">${esc(pillLabel)}</span>${due}
       <h4>${esc(app.role)}</h4>
-      <p class="meta">${esc(app.company)} · ${esc(app.date || "")}${app.deadline ? ` · due ${esc(app.deadline)}` : ""}${contact ? ` · ${esc(contact)}` : ""}${app.fit_rating ? ` · fit ${esc(app.fit_rating)}` : ""}</p>
+      <p class="meta">${esc(app.company)} · ${esc(app.date || "")}${age}${app.deadline ? ` · due ${esc(app.deadline)}` : ""}${contact ? ` · ${esc(contact)}` : ""}${app.fit_rating ? ` · fit ${esc(app.fit_rating)}` : ""}</p>
       <div class="row-actions">
         <select data-status data-company="${esc(app.company)}" data-role="${esc(app.role)}" aria-label="Status for ${esc(app.company)}">${options}</select>
+        ${submitBtn}
         <button type="button" data-copy="${esc(cmds.outcome || "")}">outcome</button>
         <button type="button" data-copy="${esc(cmds.interview || "")}">interview</button>
         <button type="button" data-copy="${esc(cmds.followup || "")}">follow-up</button>

@@ -66,6 +66,8 @@ FINAL_STATUSES = frozenset(
 WRITABLE_STATUSES = frozenset(CANONICAL_STATUSES)
 
 SILENT_DAYS = 14
+DEADLINE_URGENCY_DAYS = 7
+NEEDS_ACTION_RANKED_LIMIT = 3
 ALLOWED_FILE_PREFIXES = ("cv/", "cover_letters/", "documents/applications/")
 
 _FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---", re.S)
@@ -346,6 +348,104 @@ def resolve_allowed_file(root: Path, rel_path: str) -> Path:
     return target
 
 
+def deadline_urgency(deadline_raw: str | None, today: date) -> str | None:
+    """Return 'past', 'soon' (within DEADLINE_URGENCY_DAYS), or None."""
+    deadline = parse_iso_date(deadline_raw)
+    if deadline is None:
+        return None
+    delta = (deadline - today).days
+    if delta < 0:
+        return "past"
+    if delta <= DEADLINE_URGENCY_DAYS:
+        return "soon"
+    return None
+
+
+def build_needs_action(
+    applications: list[dict[str, Any]],
+    backlog: dict[str, Any],
+    today: date,
+) -> list[dict[str, Any]]:
+    """Derive copy-to-Claude prompts from tracker + ranked backlog. Never invents jobs."""
+    actions: list[dict[str, Any]] = []
+    for app in applications:
+        status = app.get("status") or ""
+        company = app.get("company") or ""
+        role = app.get("role") or ""
+        cmds = app.get("commands") or {}
+        if app.get("bucket") == "silent":
+            actions.append(
+                {
+                    "kind": "silent",
+                    "company": company,
+                    "role": role,
+                    "command": cmds.get("followup") or f"/outcome followup {company}",
+                    "reason": f"Applied {app.get('date') or '?'} — no reply in {SILENT_DAYS}+ days",
+                }
+            )
+        if status == "drafted":
+            urgency = deadline_urgency(app.get("deadline"), today)
+            if urgency == "past":
+                actions.append(
+                    {
+                        "kind": "drafted_deadline",
+                        "company": company,
+                        "role": role,
+                        "command": cmds.get("outcome") or f"/outcome {company}",
+                        "reason": f"Drafted but unsent — deadline passed ({app.get('deadline')})",
+                    }
+                )
+            elif urgency == "soon":
+                actions.append(
+                    {
+                        "kind": "drafted_deadline",
+                        "company": company,
+                        "role": role,
+                        "command": cmds.get("outcome") or f"/outcome {company}",
+                        "reason": f"Drafted but unsent — deadline {app.get('deadline')}",
+                    }
+                )
+            applied_on = parse_iso_date(app.get("date"))
+            if urgency is None and applied_on is not None:
+                age = (today - applied_on).days
+                if age >= SILENT_DAYS:
+                    actions.append(
+                        {
+                            "kind": "drafted_stale",
+                            "company": company,
+                            "role": role,
+                            "command": cmds.get("outcome") or f"/outcome {company}",
+                            "reason": f"Drafted {age} days ago — still not marked submitted",
+                        }
+                    )
+        if status == "offer":
+            actions.append(
+                {
+                    "kind": "offer",
+                    "company": company,
+                    "role": role,
+                    "command": cmds.get("outcome") or f"/outcome {company}",
+                    "reason": "Offer received — record decision with /outcome",
+                }
+            )
+
+    for job in (backlog.get("ranked") or [])[:NEEDS_ACTION_RANKED_LIMIT]:
+        url = job.get("url") or ""
+        cmd = f"/apply {url}".strip() if url else "/apply"
+        score = job.get("rank_score")
+        score_bit = f"score {score}" if score is not None else "ranked"
+        actions.append(
+            {
+                "kind": "ranked",
+                "company": job.get("company") or "",
+                "role": job.get("title") or "",
+                "command": cmd,
+                "reason": f"Ranked backlog ({score_bit}) — copy /apply into Claude",
+            }
+        )
+    return actions
+
+
 def build_state(root: Path, today: date | None = None) -> dict[str, Any]:
     today = today or date.today()
     rows = read_tracker(root)
@@ -359,14 +459,19 @@ def build_state(root: Path, today: date | None = None) -> dict[str, Any]:
         archive = archives.get(slug, {})
         cv_pdf = _pdf_beside(root, row.get("cv_file") or "")
         cover_pdf = _pdf_beside(root, row.get("cover_letter_file") or "")
+        status = normalize_status(row.get("status"))
+        applied_on = parse_iso_date(row.get("date"))
+        days_open = (today - applied_on).days if applied_on is not None else None
         applications.append(
             {
                 **row,
-                "status": normalize_status(row.get("status")),
+                "status": status,
                 "bucket": bucket,
                 "archive": archive,
                 "cv_pdf": cv_pdf,
                 "cover_pdf": cover_pdf,
+                "deadline_urgency": deadline_urgency(row.get("deadline"), today),
+                "days_open": days_open,
                 "commands": {
                     "apply": f"/apply {row['source']}".strip() if row.get("source") else "/apply",
                     "interview": f"/interview {row['company']}",
@@ -377,6 +482,7 @@ def build_state(root: Path, today: date | None = None) -> dict[str, Any]:
         )
     seen = read_seen_jobs(root)
     backlog = scrape_backlog(seen, tracker_keys(rows))
+    needs_action = build_needs_action(applications, backlog, today)
     empty = not rows and not seen
     return {
         "today": today.isoformat(),
@@ -384,5 +490,6 @@ def build_state(root: Path, today: date | None = None) -> dict[str, Any]:
         "buckets": buckets,
         "applications": applications,
         "backlog": backlog,
+        "needs_action": needs_action,
         "portals": list_portals(root),
     }

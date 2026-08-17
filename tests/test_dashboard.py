@@ -153,6 +153,91 @@ class ClassifyTests(unittest.TestCase):
             state = jp.build_state(root, today=date(2026, 8, 17))
             self.assertEqual(state["backlog"]["ranked"][0]["gaps"], ["Limited Spark"])
 
+    def test_needs_action_silent_deadline_and_ranked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "job_scraper").mkdir()
+            (root / "job_scraper" / "seen_jobs.json").write_text(
+                json.dumps(
+                    {
+                        "seen": {
+                            "u1": {
+                                "title": "Scientist",
+                                "company": "Other",
+                                "url": "https://example.com/job",
+                                "status": "ranked",
+                                "rank_score": 84,
+                                "gaps": ["Spark"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            _write_tracker(
+                root,
+                [
+                    {
+                        "date": "2026-08-01",
+                        "company": "Acme",
+                        "role": "Engineer",
+                        "status": "applied",
+                    },
+                    {
+                        "date": "2026-08-10",
+                        "company": "Beta",
+                        "role": "Analyst",
+                        "status": "drafted",
+                        "deadline": "2026-08-18",
+                    },
+                    {
+                        "date": "2026-08-16",
+                        "company": "Gamma",
+                        "role": "Lead",
+                        "status": "offer",
+                    },
+                ],
+            )
+            state = jp.build_state(root, today=date(2026, 8, 17))
+            kinds = {item["kind"] for item in state["needs_action"]}
+            self.assertIn("silent", kinds)
+            self.assertIn("drafted_deadline", kinds)
+            self.assertIn("offer", kinds)
+            self.assertIn("ranked", kinds)
+            silent = next(a for a in state["needs_action"] if a["kind"] == "silent")
+            self.assertEqual(silent["company"], "Acme")
+            self.assertIn("/outcome followup Acme", silent["command"])
+            drafted = next(a for a in state["needs_action"] if a["kind"] == "drafted_deadline")
+            self.assertEqual(drafted["company"], "Beta")
+            ranked = next(a for a in state["needs_action"] if a["kind"] == "ranked")
+            self.assertEqual(ranked["command"], "/apply https://example.com/job")
+            beta = next(a for a in state["applications"] if a["company"] == "Beta")
+            self.assertEqual(beta["deadline_urgency"], "soon")
+
+    def test_mark_submitted_is_drafted_to_applied(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_tracker(
+                root,
+                [
+                    {
+                        "date": "2026-08-10",
+                        "company": "Acme",
+                        "role": "Engineer",
+                        "status": "drafted",
+                        "deadline": "2026-08-20",
+                    }
+                ],
+            )
+            updated = jp.update_tracker_status(
+                root, "Acme", "Engineer", "applied", today=date(2026, 8, 17)
+            )
+            self.assertEqual(updated["status"], "applied")
+            rows = jp.read_tracker(root)
+            self.assertEqual(rows[0]["status"], "applied")
+            self.assertIn("applied", rows[0]["notes"])
+            self.assertEqual(rows[0]["deadline"], "2026-08-20")
+
 
 class PortalAndPathTests(unittest.TestCase):
     def test_portal_enabled_roundtrip(self) -> None:
@@ -244,6 +329,9 @@ class HttpTests(unittest.TestCase):
             self.assertIn('class="atmosphere"', html)
             self.assertIn("/static/img/empty.webp", html)
             self.assertIn("panel-strip", html)
+            self.assertIn('id="needs"', html)
+            self.assertIn("Mark submitted", (ROOT / "dashboard" / "app.js").read_text(encoding="utf-8"))
+            self.assertIn("needs_action", (ROOT / "tools" / "job_pipeline.py").read_text(encoding="utf-8"))
         finally:
             httpd.shutdown()
             httpd.server_close()
