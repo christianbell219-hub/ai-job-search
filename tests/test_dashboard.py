@@ -39,6 +39,9 @@ class ClassifyTests(unittest.TestCase):
             self.assertEqual(state["applications"], [])
             self.assertEqual(state["buckets"]["waiting"], 0)
             self.assertEqual(state["backlog"]["counts"]["new"], 0)
+            self.assertEqual(state["paste_inbox"], [])
+            self.assertIsNone(state["gmail"]["last_sync"])
+            self.assertEqual(state["rail"][0]["command"], "/scrape")
 
     def test_silent_is_applied_14_days(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -238,6 +241,43 @@ class ClassifyTests(unittest.TestCase):
             self.assertIn("applied", rows[0]["notes"])
             self.assertEqual(rows[0]["deadline"], "2026-08-20")
 
+    def test_paste_inbox_gmail_rail_and_unranked(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            postings = root / "documents" / "postings"
+            postings.mkdir(parents=True)
+            (postings / "skip").mkdir()
+            (postings / "notes.bin").write_bytes(b"nope")
+            (postings / "blocked.txt").write_text("pasted JD", encoding="utf-8")
+            (root / "gmail_sync").mkdir()
+            (root / "gmail_sync" / "state.json").write_text(
+                json.dumps(
+                    {
+                        "last_sync": "2026-08-16",
+                        "processed_message_ids": ["m1", "m2"],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            (root / "job_scraper").mkdir()
+            (root / "job_scraper" / "seen_jobs.json").write_text(
+                json.dumps({"seen": {"u1": {"title": "X", "company": "Y", "status": "new"}}}),
+                encoding="utf-8",
+            )
+            state = jp.build_state(root, today=date(2026, 8, 17))
+            self.assertFalse(state["empty"])
+            self.assertEqual([item["name"] for item in state["paste_inbox"]], ["blocked.txt"])
+            self.assertEqual(
+                state["paste_inbox"][0]["command"],
+                "/apply the posting in documents/postings/blocked.txt",
+            )
+            self.assertEqual(state["gmail"]["last_sync"], "2026-08-16")
+            self.assertEqual(state["gmail"]["processed"], 2)
+            self.assertEqual([item["command"] for item in state["rail"][:3]], ["/scrape", "/rank", "/status"])
+            kinds = {item["kind"] for item in state["needs_action"]}
+            self.assertIn("paste", kinds)
+            self.assertIn("unranked", kinds)
+
 
 class PortalAndPathTests(unittest.TestCase):
     def test_portal_enabled_roundtrip(self) -> None:
@@ -270,6 +310,14 @@ class PortalAndPathTests(unittest.TestCase):
             pdf = cv / "main_acme.pdf"
             pdf.write_bytes(b"%PDF")
             self.assertEqual(jp.resolve_allowed_file(root, "cv/main_acme.pdf"), pdf.resolve())
+            postings = root / "documents" / "postings"
+            postings.mkdir(parents=True)
+            paste = postings / "blocked.txt"
+            paste.write_text("pasted posting", encoding="utf-8")
+            self.assertEqual(
+                jp.resolve_allowed_file(root, "documents/postings/blocked.txt"),
+                paste.resolve(),
+            )
 
 
 class HttpTests(unittest.TestCase):
@@ -318,18 +366,25 @@ class HttpTests(unittest.TestCase):
         thread.start()
         port = httpd.server_address[1]
         try:
-            for name in ("atmosphere.webp", "empty.webp", "backlog.webp"):
+            for name in ("atmosphere.webp", "empty.webp", "backlog.webp", "rail.webp", "inbox.webp"):
                 with urlopen(f"http://127.0.0.1:{port}/static/img/{name}", timeout=5) as resp:
                     body = resp.read()
                     self.assertEqual(resp.headers.get("Content-Type"), "image/webp")
                     self.assertGreater(len(body), 1000)
                     self.assertTrue(body.startswith(b"RIFF"))
+            with urlopen(f"http://127.0.0.1:{port}/static/motion.js", timeout=5) as resp:
+                self.assertIn("IntersectionObserver", resp.read().decode("utf-8"))
             with urlopen(f"http://127.0.0.1:{port}/", timeout=5) as resp:
                 html = resp.read().decode("utf-8")
             self.assertIn('class="atmosphere"', html)
             self.assertIn("/static/img/empty.webp", html)
+            self.assertIn("/static/img/rail.webp", html)
             self.assertIn("panel-strip", html)
             self.assertIn('id="needs"', html)
+            self.assertIn('class="bento"', html)
+            self.assertIn('id="rail"', html)
+            self.assertIn('id="inbox"', html)
+            self.assertIn("Paste inbox", html)
             self.assertIn("Mark submitted", (ROOT / "dashboard" / "app.js").read_text(encoding="utf-8"))
             self.assertIn("needs_action", (ROOT / "tools" / "job_pipeline.py").read_text(encoding="utf-8"))
         finally:

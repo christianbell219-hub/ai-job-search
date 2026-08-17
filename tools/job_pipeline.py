@@ -68,7 +68,12 @@ WRITABLE_STATUSES = frozenset(CANONICAL_STATUSES)
 SILENT_DAYS = 14
 DEADLINE_URGENCY_DAYS = 7
 NEEDS_ACTION_RANKED_LIMIT = 3
-ALLOWED_FILE_PREFIXES = ("cv/", "cover_letters/", "documents/applications/")
+ALLOWED_FILE_PREFIXES = (
+    "cv/",
+    "cover_letters/",
+    "documents/applications/",
+    "documents/postings/",
+)
 
 _FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---", re.S)
 _ENABLED_LINE_RE = re.compile(r"^enabled:\s*(true|false)\s*$", re.I | re.M)
@@ -196,7 +201,22 @@ def scrape_backlog(seen: dict[str, Any], applied: set[tuple[str, str]]) -> dict[
         else:
             counts["other"] += 1
     ranked.sort(key=lambda item: (-(item["rank_score"] or 0), item["company"]))
-    return {"counts": counts, "ranked": ranked}
+    expired: list[dict[str, Any]] = []
+    for key, entry in seen.items():
+        if not isinstance(entry, dict):
+            continue
+        if str(entry.get("status") or "") != "expired":
+            continue
+        expired.append(
+            {
+                "key": key,
+                "title": str(entry.get("title") or ""),
+                "company": str(entry.get("company") or ""),
+                "url": entry.get("url") or "",
+            }
+        )
+    expired.sort(key=lambda item: (item["company"], item["title"]))
+    return {"counts": counts, "ranked": ranked, "expired": expired[:8]}
 
 
 def _parse_contact(path: Path) -> dict[str, str]:
@@ -348,6 +368,60 @@ def resolve_allowed_file(root: Path, rel_path: str) -> Path:
     return target
 
 
+def list_paste_inbox(root: Path) -> list[dict[str, Any]]:
+    """Paste files in documents/postings/. Never invents filenames."""
+    base = root / "documents" / "postings"
+    items: list[dict[str, Any]] = []
+    if not base.is_dir():
+        return items
+    files = [p for p in base.iterdir() if p.is_file() and p.suffix.lower() in {".txt", ".md"}]
+    files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    for path in files:
+        rel = path.relative_to(root).as_posix()
+        items.append(
+            {
+                "name": path.name,
+                "path": rel,
+                "bytes": path.stat().st_size,
+                "command": f"/apply the posting in {rel}",
+            }
+        )
+    return items
+
+
+def read_gmail_stamp(root: Path) -> dict[str, Any]:
+    path = root / "gmail_sync" / "state.json"
+    empty = {"last_sync": None, "processed": 0}
+    if not path.is_file():
+        return empty
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return empty
+    if not isinstance(data, dict):
+        return empty
+    ids = data.get("processed_message_ids") or []
+    processed = len(ids) if isinstance(ids, list) else 0
+    last_sync = data.get("last_sync")
+    return {
+        "last_sync": last_sync if isinstance(last_sync, str) and last_sync else None,
+        "processed": processed,
+    }
+
+
+def claude_rail(backlog: dict[str, Any], silent: int) -> list[dict[str, str]]:
+    counts = backlog.get("counts") or {}
+    rank_hint = "Rank new scrape hits" if counts.get("new") else "Rank scrape backlog"
+    gmail_hint = "Check inbox for status mail" if silent else "Sync Gmail status signals"
+    return [
+        {"label": "Scrape", "command": "/scrape", "hint": "Find new postings"},
+        {"label": "Rank", "command": "/rank", "hint": rank_hint},
+        {"label": "Status", "command": "/status", "hint": "Narrative pipeline in Claude"},
+        {"label": "Gmail", "command": "/gmail-sync", "hint": gmail_hint},
+        {"label": "Report", "command": "/html-report", "hint": "Offline HTML snapshot"},
+    ]
+
+
 def deadline_urgency(deadline_raw: str | None, today: date) -> str | None:
     """Return 'past', 'soon' (within DEADLINE_URGENCY_DAYS), or None."""
     deadline = parse_iso_date(deadline_raw)
@@ -440,7 +514,18 @@ def build_needs_action(
                 "company": job.get("company") or "",
                 "role": job.get("title") or "",
                 "command": cmd,
-                "reason": f"Ranked backlog ({score_bit}) — copy /apply into Claude",
+                "reason": f"Ranked backlog ({score_bit}) - copy /apply into Claude",
+            }
+        )
+    new_count = (backlog.get("counts") or {}).get("new") or 0
+    if new_count:
+        actions.append(
+            {
+                "kind": "unranked",
+                "company": "",
+                "role": "",
+                "command": "/rank",
+                "reason": f"{new_count} new scrape hits waiting for /rank",
             }
         )
     return actions
@@ -482,8 +567,19 @@ def build_state(root: Path, today: date | None = None) -> dict[str, Any]:
         )
     seen = read_seen_jobs(root)
     backlog = scrape_backlog(seen, tracker_keys(rows))
+    paste_inbox = list_paste_inbox(root)
     needs_action = build_needs_action(applications, backlog, today)
-    empty = not rows and not seen
+    for paste in paste_inbox:
+        needs_action.append(
+            {
+                "kind": "paste",
+                "company": "",
+                "role": paste["name"],
+                "command": paste["command"],
+                "reason": "Pasted posting waiting in documents/postings/",
+            }
+        )
+    empty = not rows and not seen and not paste_inbox
     return {
         "today": today.isoformat(),
         "empty": empty,
@@ -492,4 +588,7 @@ def build_state(root: Path, today: date | None = None) -> dict[str, Any]:
         "backlog": backlog,
         "needs_action": needs_action,
         "portals": list_portals(root),
+        "paste_inbox": paste_inbox,
+        "gmail": read_gmail_stamp(root),
+        "rail": claude_rail(backlog, buckets["silent"]),
     }
