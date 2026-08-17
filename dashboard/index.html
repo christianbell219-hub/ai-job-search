@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Job search</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Local only · 127.0.0.1</p>
+      <h1>Job search</h1>
+    </div>
+    <p class="lede">Pipeline from your tracker and scrape backlog. Claude still drafts CVs and letters.</p>
+  </header>
+
+  <section id="empty" class="empty hidden">
+    <h2>Nothing to show yet</h2>
+    <p>Run <code>/setup</code> then <code>/scrape</code> in Claude. This page does not invent jobs.</p>
+  </section>
+
+  <section id="stats" class="stats"></section>
+
+  <section class="board" id="board"></section>
+
+  <section class="panel">
+    <h2>Ranked backlog</h2>
+    <p class="hint">Copy <code>/apply</code> into Claude. This site does not draft applications.</p>
+    <div id="backlog"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Portals</h2>
+    <p class="hint"><code>enabled: false</code> skips a board in <code>/scrape</code> without deleting the skill.</p>
+    <div id="portals" class="portals"></div>
+  </section>
+
+  <footer>
+    Status writes edit <code>job_search_tracker.csv</code> only.
+    Later stages still belong in <code>/outcome</code> when you have notes to archive.
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
