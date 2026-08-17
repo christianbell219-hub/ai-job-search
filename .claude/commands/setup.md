@@ -221,6 +221,7 @@ Documents cover skills, experience, education, references, and behavioral signal
 - Languages you work in professionally, with proficiency levels (only if not already extracted from `cv/` or `linkedin/` above) - this feeds the Language Gate in `04-job-evaluation.md`, so ask directly rather than skipping it
 - Salary expectations / baseline (optional)
 - Commute or location constraints (if not visible from CV)
+- Workplace mode (`onsite` | `hybrid` | `remote-ok` | `remote-only`), plus timezone/region and employer-country constraints if remote is in play (use the questions from Path C Section 9)
 - Job search configuration (use the questions from Path C Section 9 below)
 
 Then proceed to Step 3 to populate the non-skill files (`CLAUDE.md`, `cv/main_example.tex`, `.claude/skills/job-scraper/search-queries.md`). Step 3 will detect that the seven skill files are already populated and skip those substeps.
@@ -234,7 +235,7 @@ If the user provides a single CV/resume:
 1. Read the document thoroughly.
 2. Extract all structured information: name, contact, education, experience, skills, languages, publications, awards.
 3. Present a summary of what was extracted.
-4. Ask follow-up questions for gaps (behavioral profile, career goals, deal-breakers, languages and proficiency levels if not already extracted, salary expectations, references).
+4. Ask follow-up questions for gaps (behavioral profile, career goals, deal-breakers, languages and proficiency levels if not already extracted, salary expectations, workplace mode / remote constraints, references).
 5. Proceed to Step 3 (file generation).
 
 ---
@@ -300,6 +301,7 @@ If not, ask behavioral questions:
 - Salary expectations/baseline (optional)
 - What environments to avoid
 - Commute/location constraints
+- Workplace preference: onsite, hybrid, open to remote as well as local (`remote-ok`), or remote-only
 
 ### Section 8: References (optional)
 For each reference:
@@ -313,7 +315,9 @@ Ask about:
 - **Role titles to search for:** Job titles for the same underlying work vary a lot across companies and markets - a "Data Scientist" role at one employer may be called "Insights Analyst" or "Data Consultant" at another. Ask about the function first: "What kind of work do you actually want to be doing day-to-day?" Then translate that into concrete search terms: "Given that, what job titles should I search for? For example: Data Scientist, ML Engineer, Geophysicist." Collect 3-8 specific titles, but keep the underlying function in mind - it feeds the category naming in `search-queries.md` and the Experience Match dimension in `04-job-evaluation.md`.
 - **Key skills as search terms:** "Which of your skills are most likely to appear in job postings?" Pick 3-5 that are distinctive and searchable.
 - **Target companies (optional):** "Are there specific companies you'd like to monitor for openings?"
-- **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far).
+- **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far). These tiers apply to **onsite and hybrid** roles only.
+- **Workplace mode:** "Are you looking for onsite jobs, hybrid, fully remote, or both local and remote?" Record exactly one of: `onsite` | `hybrid` | `remote-ok` | `remote-only`. If they are open to remote without dropping local search, record `remote-ok` (the default when remote is acceptable). If they only want remote, record `remote-only`. Write `[YOUR_WORKPLACE_MODE]` into `search-queries.md`.
+- **Remote constraints** (ask when mode is `remote-ok` or `remote-only`): acceptable timezones or regions (e.g. EU/CET, anywhere); whether the employer must be in a given country for contracts/tax. Write these into `search-queries.md` as **Remote regions / timezones** and **Employer country constraint**. Do not use commute distance to filter true-remote jobs.
 - **Job portals:** "The framework ships country-agnostic search CLIs (`linkedin-search`, `freehire-search`, enabled by default) plus Danish portal demos (Jobindex, Jobbank, Jobdanmark, Jobnet) that ship **disabled**. `/scrape` auto-discovers whatever portal skills are installed under `.agents/skills/` and skips any with `enabled: false`. Which portals fit your market?" **Then act on the answer:** if the user's market is Denmark (or they ask for the Danish boards), edit each of the four Danish `SKILL.md` files and set `enabled: true` in the frontmatter; otherwise leave them disabled and say so - they cost nothing while disabled and can be enabled later by flipping the flag. If the user needs a local board that is not shipped, guide them to `/add-portal` (market-specific skills live in their fork). WebSearch/`site:` queries remain the fallback for portals without a CLI skill.
 - **CV language:** "Should your CVs be written in English (the default, accepted in most markets), or in your market's language?" Record the answer as a `CV language: <language>` line in CLAUDE.md's Identity section. Cover letters always match each posting's language automatically; this setting governs the CV only. If the user is unsure, keep English and note they can re-run `/setup --section search` to change it.
 

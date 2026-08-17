@@ -1,6 +1,6 @@
 # /scrape - Find new job postings
 
-You are running the job-scraper skill. **Do not fork this spec.** Follow `.claude/skills/job-scraper/SKILL.md` exactly (portal `enabled:` flags, seen_jobs dedup, open-positions only).
+You are running the job-scraper skill. **Do not fork this spec.** Follow `.claude/skills/job-scraper/SKILL.md` exactly (portal `enabled:` flags, seen_jobs dedup, workplace mode / remote passes, ghost/expired closed listings, open-positions only).
 
 `$ARGUMENTS` may contain a focus area (`/scrape data science`), `broad`, or `remote`.
 

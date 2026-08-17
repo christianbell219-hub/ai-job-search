@@ -19,6 +19,7 @@ documents/
 │       ├── job_posting.md       # The original job posting (written by /apply, or pasted)
 │       ├── cover_letter.tex     # The cover letter you submitted
 │       ├── cv_draft.tex         # The CV variant you submitted
+│       ├── contact.md           # Hiring contact + confidence (written by /apply; /setup ignores)
 │       └── outcome.md           # Result + notes (fill in after hearing back)
 └── README.md                    # This file
 ```
@@ -133,6 +134,19 @@ applications/
 
 **`cv_draft.tex`** — The CV variant you submitted. Used to extract profile statement styles for `05-cv-templates.md`.
 
+**`contact.md`** — Written by `/apply` (and filled by `/outcome` if missing). Hiring-contact name, title, source, and confidence. `/interview` and the local dashboard read this; `/setup` ignores it (same as `interview_prep_*.md`).
+
+```markdown
+# Hiring contact: <Company> — <Role>
+
+**Name:** <full name or unknown>
+**Title:** <title or unknown>
+**Department:** <department or unknown>
+**Confidence:** high | medium | low | unknown
+**Source:** <URL or "posting text">
+**Salutation used:** <Dear …>
+```
+
 **`outcome.md`** — Fill this in after the application resolves. Format:
 
 ```markdown
@@ -157,7 +171,7 @@ Any signal about what they valued or didn't?
 
 `in_progress` marks an application that is still open (used by `/outcome` for interview-stage updates before a resolution). `/setup`'s calibration draws conclusions only from applications with a final status.
 
-Application folders may also contain **`interview_prep_<stage>.md`** files written by `/interview` (one per interview stage, kept as history). `/setup` reads only the four files named above and ignores these.
+Application folders may also contain **`interview_prep_<stage>.md`** files written by `/interview` (one per interview stage, kept as history). `/setup` reads only `job_posting.md`, `cover_letter.tex`, `cv_draft.tex`, and `outcome.md` and ignores `contact.md` and interview prep files.
 
 **What `/setup` learns from outcome.md:**
 - Which role types and companies have led to interviews (signals strong fit areas)

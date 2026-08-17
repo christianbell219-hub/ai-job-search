@@ -227,3 +227,4 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 - `slug` in search results is extracted from the API's relative `url` field (the path after `/job/`).
 - `applicationDeadline` in search results can be `null` (no deadline set).
 - Job type values for filters: `fuldtid`, `deltid`, `fleksjob`, `elev`, `studiejob`, `praktik`.
+- **Remote:** there is no search-time remote flag. Do not treat `--municipality` / `--region` as a remote filter. Classify `work_mode` from `detail` workplace (`Arbejdssted`) and description. `hiringOrganization` is the company, not a person.

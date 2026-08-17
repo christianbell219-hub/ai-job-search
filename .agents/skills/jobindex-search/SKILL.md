@@ -52,7 +52,9 @@ Key flags:
 - `--limit <n>` — cap total results the CLI outputs (client-side)
 - `--format json|table|plain`
 
-> **Area note**: The Jobindex API does not support area filtering via params. To find jobs in a specific city, include the city in `--query` (e.g. `--query "data engineer københavn"` or `--query "python aarhus"`).
+> **Area note**: The Jobindex API does not support area filtering via params. To find **onsite** jobs in a specific city, include the city in `--query` (e.g. `--query "data engineer københavn"` or `--query "python aarhus"`).
+>
+> **Remote note**: Hjemmearbejde is a UI-only filter (not URL/API-constructable). For remote search, do **not** append a city — that excludes remote jobs posted against another town. Use a keyword pass (`--query "data engineer remote"` or `hjemmearbejde`) and classify `work_mode` from `detail` text.
 
 ### Fetch full job detail
 
@@ -147,6 +149,16 @@ bun run .agents/skills/jobindex-search/cli/src/cli.ts search \
   --format table
 ```
 
+### Remote / hjemmearbejde keyword pass (no city)
+
+```bash
+bun run .agents/skills/jobindex-search/cli/src/cli.ts search \
+  --query "data engineer remote hjemmearbejde" \
+  --jobage 14 \
+  --sort date \
+  --format table
+```
+
 ---
 
 ## Output formats
@@ -165,7 +177,8 @@ All errors are written to **stderr** as `{ "error": "...", "code": "..." }` and 
 
 - All data is from the public `jobindex.dk` API — no credentials required.
 - Page size is fixed at 20 results per page (Jobindex API limitation).
-- Area/region filtering via API params does not work — include city names in `--query` instead.
+- Area/region filtering via API params does not work — include city names in `--query` for **onsite** search only.
+- Hjemmearbejde (remote) is UI-only — there is no `--remote` flag. Remote keyword passes must not append `[YOUR_CITY]`.
 - `--jobage 9999` is the default and includes all postings regardless of age.
 - Total count in `meta.total` uses Danish dot-thousands notation internally (e.g. `18.903`) — the CLI normalizes this to a plain integer.
 - Job IDs are string-prefixed (e.g. `h1647303`) — pass them as-is to `detail`.

@@ -195,3 +195,4 @@ dictionaries never guess). So:
 - `search` calls `/api/v1/agent/jobs/search` (public, like the rest). A self-hosted
   instance older than that endpoint answers 404, and the CLI reports it as an error
   naming the endpoint — never as an empty result set.
+- **Remote search:** pass `--remote remote` and include `none` in `--region` (e.g. `--region eu,none`) so remotes with unresolved geography are not dropped. See "Partial data" above.
