@@ -6,25 +6,62 @@
   <title>Job search</title>
   <meta name="description" content="Local pipeline board for your job hunt. Drafting stays in Claude.">
   <link rel="stylesheet" href="/static/style.css">
-  <!-- Design read: personal job-pipeline board, Linear-calm, vanilla CSS, Geist, one copper accent, still-life photography. -->
+  <!--
+    design_plan (gpt-taste, adapted to vanilla dashboard, no React rewrite)
+    Python RNG: seed = len("I want to add more to the dashboard use /gpt-taste") = 50
+      hero = ['cinematic','asymmetry','editorial'][50 % 3] -> editorial split
+      font = ['Satoshi','Cabinet','Outfit','Geist'][50 % 4] -> Geist
+      components = inline still, portal marquee, horizontal portal accordion
+      motion = hover scale on tiles; image scale/fade via IntersectionObserver
+    AIDA: glass pill nav, Attention hero, Interest bento, Desire kanban, Action footer CTA
+    Hero math: .hero-copy max-width 72rem (max-w-6xl). H1 clamp(3rem, 5vw, 5.5rem).
+      Copy sits in the left column (~36rem); two lines, no stamp badges, no pill tags.
+    Bento: 12-col grid-auto-flow dense. needs 8x2 + rail 4x1 + inbox 4x1 = 24/24 cells.
+    Labels: none. Primary CTA cream-on-ink (dark) / ink-on-cream (light). Ghost inverts.
+  -->
 </head>
 <body class="is-loading">
   <a class="skip" href="#main">Skip to board</a>
   <div class="atmosphere" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
 
-  <div class="shell">
-    <header class="island">
-      <div class="island-core">
-        <p class="kicker">Local · 127.0.0.1</p>
-        <h1>Job search</h1>
-        <p class="lede">Your tracker and scrape backlog. Claude still writes the CV and letter.</p>
-      </div>
-    </header>
+  <header class="island">
+    <div class="island-core">
+      <p class="kicker">Local · 127.0.0.1</p>
+      <nav class="nav-copy" aria-label="Claude commands">
+        <button type="button" data-copy="/scrape">Scrape</button>
+        <button type="button" data-copy="/rank">Rank</button>
+        <button type="button" data-copy="/status">Status</button>
+      </nav>
+    </div>
+  </header>
 
-    <main id="main">
+  <div class="shell">
+    <section class="hero">
+      <div class="hero-copy">
+        <h1>The hunt, on one desk
+          <span class="inline-still" style="background-image:url('/static/img/inbox.webp')" aria-hidden="true"></span>
+        </h1>
+        <p class="lede">Tracker, scrape backlog, and paste inbox. Claude still writes the CV and letter.</p>
+        <div class="hero-ctas">
+          <button type="button" class="cta" data-copy="/scrape">Copy /scrape</button>
+          <button type="button" class="cta ghost" data-copy="/rank">Copy /rank</button>
+        </div>
+      </div>
+      <figure class="hero-still">
+        <div class="hero-still-frame reveal-still">
+          <img src="/static/img/rail.webp" alt="" width="1200" height="800" decoding="async">
+        </div>
+      </figure>
+    </section>
+
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track" id="marquee"></div>
+    </div>
+
+    <main id="main" class="desk">
       <section id="empty" class="empty hidden" aria-live="polite">
-        <figure class="empty-visual">
+        <figure class="empty-visual reveal-still">
           <img src="/static/img/empty.webp" alt="" width="900" height="900" decoding="async">
         </figure>
         <div class="empty-copy">
@@ -34,16 +71,38 @@
       </section>
 
       <section id="stats" class="metrics" aria-label="Pipeline counts"></section>
-      <section id="needs" class="needs bezel hidden" aria-label="Needs action"></section>
+
+      <section class="bento" aria-label="Desk">
+        <div id="needs" class="needs tile tile-needs"></div>
+        <div class="tile tile-rail tile-photo">
+          <div class="tile-still" style="background-image:url('/static/img/rail.webp')"></div>
+          <div class="tile-body">
+            <h2>Claude rail</h2>
+            <p class="hint">Copy a command. This board does not run agents.</p>
+            <div id="rail" class="rail"></div>
+            <p class="meta" id="gmail-stamp"></p>
+          </div>
+        </div>
+        <div class="tile tile-inbox">
+          <div class="tile-still small" style="background-image:url('/static/img/inbox.webp')"></div>
+          <div class="tile-body">
+            <h2>Paste inbox</h2>
+            <p class="hint">Files in <code>documents/postings/</code>. Drop text Claude could not fetch.</p>
+            <div id="inbox"></div>
+          </div>
+        </div>
+      </section>
+
       <section class="board" id="board" aria-label="Applications"></section>
 
       <section class="bezel">
         <div class="panel panel-photo">
-          <div class="panel-strip" role="img" aria-label="Folders and copper ruler on a desk"></div>
+          <div class="panel-strip reveal-still" role="img" aria-label="Folders and copper ruler on a desk"></div>
           <div class="panel-body">
             <h2>Ranked backlog</h2>
             <p class="hint">Copy the apply command into Claude. This site does not draft applications.</p>
             <div id="backlog"></div>
+            <div id="expired" class="expired"></div>
           </div>
         </div>
       </section>
@@ -51,19 +110,27 @@
       <section class="bezel">
         <div class="panel">
           <h2>Portals</h2>
-          <p class="hint">Off means <code>/scrape</code> skips that board. The skill stays installed.</p>
-          <div id="portals" class="portals"></div>
+          <p class="hint">Hover a slice. Off means <code>/scrape</code> skips that board. The skill stays installed.</p>
+          <div id="portals" class="portals accordion"></div>
         </div>
       </section>
     </main>
 
     <footer>
-      Status changes edit <code>job_search_tracker.csv</code> only.
-      Use <code>/outcome</code> when you have notes to archive.
-      Needs action copies Claude commands; Mark submitted flips <code>drafted</code> → <code>applied</code>.
+      <div class="footer-cta">
+        <h2>Keep the pipeline moving</h2>
+        <p>Copy a command into Claude. This board never drafts, never sends mail.</p>
+        <button type="button" class="cta" data-copy="/scrape">Copy /scrape</button>
+      </div>
+      <p class="footer-note">
+        Status changes edit <code>job_search_tracker.csv</code> only.
+        Use <code>/outcome</code> when you have notes to archive.
+        Mark submitted flips <code>drafted</code> to <code>applied</code>.
+      </p>
     </footer>
   </div>
 
   <script src="/static/app.js"></script>
+  <script src="/static/motion.js"></script>
 </body>
 </html>

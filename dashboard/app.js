@@ -42,6 +42,9 @@ function render(data) {
     .join("");
 
   renderNeeds(data.needs_action || []);
+  renderRail(data.rail || [], data.gmail || {});
+  renderInbox(data.paste_inbox || []);
+  renderMarquee(data.portals || []);
 
   const board = document.getElementById("board");
   board.innerHTML = BUCKETS.map(([key, label]) => {
@@ -73,17 +76,30 @@ function render(data) {
       .join("")}</tbody></table>`;
   }
 
+  const expired = data.backlog.expired || [];
+  const expiredEl = document.getElementById("expired");
+  if (!expired.length) {
+    expiredEl.innerHTML = "";
+  } else {
+    expiredEl.innerHTML = `<details>
+      <summary>${expired.length} expired listings (ghost or deadline)</summary>
+      <ul class="expired-list">${expired
+        .map((job) => `<li>${esc(job.title)} · ${esc(job.company)}</li>`)
+        .join("")}</ul>
+    </details>`;
+  }
+
   const portals = document.getElementById("portals");
   portals.innerHTML = (data.portals || [])
     .map(
       (p) => `<label class="portal ${p.enabled ? "" : "off"}">
+        <span class="portal-name">${esc(p.name.replace(/-search$/, ""))}</span>
+        <span class="portal-hint">${p.enabled ? "On for /scrape" : "Skipped"}</span>
         <input type="checkbox" data-portal="${esc(p.name)}" ${p.enabled ? "checked" : ""}>
-        ${esc(p.name.replace(/-search$/, ""))}
       </label>`
     )
     .join("");
 
-  document.querySelectorAll("[data-copy]").forEach(bindCopy);
   board.querySelectorAll("select[data-status]").forEach((sel) => {
     sel.addEventListener("change", async () => {
       await postStatus(sel.dataset.company, sel.dataset.role, sel.value);
@@ -112,11 +128,12 @@ function render(data) {
 function renderNeeds(actions) {
   const section = document.getElementById("needs");
   if (!actions.length) {
-    section.classList.add("hidden");
-    section.innerHTML = "";
+    section.innerHTML = `<div class="panel">
+      <h2>Needs action</h2>
+      <p class="hint">Nothing urgent. Copy /scrape when you want a fresh pass.</p>
+    </div>`;
     return;
   }
-  section.classList.remove("hidden");
   const items = actions
     .map((a) => {
       const who = [a.role, a.company].filter(Boolean).join(" · ");
@@ -136,6 +153,49 @@ function renderNeeds(actions) {
   </div>`;
 }
 
+function renderRail(rail, gmail) {
+  const el = document.getElementById("rail");
+  el.innerHTML = rail
+    .map(
+      (item) => `<button type="button" class="rail-btn" data-copy="${esc(item.command)}">
+        <b>${esc(item.label)}</b>
+        <span>${esc(item.hint)}</span>
+      </button>`
+    )
+    .join("");
+  const stamp = document.getElementById("gmail-stamp");
+  if (gmail.last_sync) {
+    stamp.textContent = `Gmail last sync ${gmail.last_sync} · ${gmail.processed} messages seen`;
+  } else {
+    stamp.textContent = "Gmail sync has not run on this machine.";
+  }
+}
+
+function renderInbox(items) {
+  const el = document.getElementById("inbox");
+  if (!items.length) {
+    el.innerHTML = `<p class="meta">Empty. Paste a blocked posting as a .txt file, then copy /apply from here.</p>`;
+    return;
+  }
+  el.innerHTML = `<ul class="inbox-list">${items
+    .map(
+      (item) => `<li>
+        <a href="/file?path=${encodeURIComponent(item.path)}" target="_blank">${esc(item.name)}</a>
+        <button type="button" data-copy="${esc(item.command)}">Copy apply</button>
+      </li>`
+    )
+    .join("")}</ul>`;
+}
+
+function renderMarquee(portals) {
+  const track = document.getElementById("marquee");
+  const names = (portals.length ? portals : [{ name: "job search" }])
+    .map((p) => p.name.replace(/-search$/, ""))
+    .join(" · ");
+  const line = `${names} · ${names} · `;
+  track.textContent = line + line;
+}
+
 async function postStatus(company, role, status) {
   await fetch("/api/status", {
     method: "POST",
@@ -148,7 +208,9 @@ function cardHtml(app, index) {
   const options = STATUSES.map(
     (s) => `<option value="${s}" ${s === app.status ? "selected" : ""}>${s}</option>`
   ).join("");
-  const contact = app.archive && app.archive.contact ? app.archive.contact.name : app.contact_person;
+  const contactObj = app.archive && app.archive.contact ? app.archive.contact : {};
+  const contact = contactObj.name || app.contact_person;
+  const confidence = contactObj.confidence ? ` (${contactObj.confidence})` : "";
   const links = [];
   if (app.cv_pdf) links.push(`<a href="/file?path=${encodeURIComponent(app.cv_pdf)}" target="_blank">CV</a>`);
   if (app.cover_pdf) links.push(`<a href="/file?path=${encodeURIComponent(app.cover_pdf)}" target="_blank">Letter</a>`);
@@ -175,7 +237,7 @@ function cardHtml(app, index) {
     <article class="card ${app.bucket}">
       <span class="pill">${esc(pillLabel)}</span>${due}
       <h4>${esc(app.role)}</h4>
-      <p class="meta">${esc(app.company)} · ${esc(app.date || "")}${age}${app.deadline ? ` · due ${esc(app.deadline)}` : ""}${contact ? ` · ${esc(contact)}` : ""}${app.fit_rating ? ` · fit ${esc(app.fit_rating)}` : ""}</p>
+      <p class="meta">${esc(app.company)} · ${esc(app.date || "")}${age}${app.deadline ? ` · due ${esc(app.deadline)}` : ""}${contact ? ` · ${esc(contact)}${esc(confidence)}` : ""}${app.fit_rating ? ` · fit ${esc(app.fit_rating)}` : ""}</p>
       <div class="row-actions">
         <select data-status data-company="${esc(app.company)}" data-role="${esc(app.role)}" aria-label="Status for ${esc(app.company)}">${options}</select>
         ${submitBtn}
@@ -188,19 +250,6 @@ function cardHtml(app, index) {
   </div>`;
 }
 
-function bindCopy(btn) {
-  btn.addEventListener("click", async () => {
-    const text = btn.getAttribute("data-copy") || "";
-    if (!text) return;
-    await navigator.clipboard.writeText(text);
-    const prev = btn.textContent;
-    btn.textContent = "Copied";
-    setTimeout(() => {
-      btn.textContent = prev;
-    }, 900);
-  });
-}
-
 function esc(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -208,5 +257,18 @@ function esc(value) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+document.addEventListener("click", async (event) => {
+  const btn = event.target.closest("[data-copy]");
+  if (!btn) return;
+  const text = btn.getAttribute("data-copy") || "";
+  if (!text) return;
+  await navigator.clipboard.writeText(text);
+  const prev = btn.innerHTML;
+  btn.textContent = "Copied";
+  setTimeout(() => {
+    btn.innerHTML = prev;
+  }, 900);
+});
 
 load();
