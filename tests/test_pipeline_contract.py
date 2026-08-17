@@ -76,6 +76,7 @@ class HandoffContract(unittest.TestCase):
         self.assertNotIn("### Step 6: Update Tracker (Optional)", text)
         self.assertIn("enabled: false", text)
         self.assertIn("skipped (disabled)", text)
+        self.assertIn("cli/src/cli.ts", text)
 
     def test_scrape_and_upskill_command_wrappers_exist(self) -> None:
         scrape = read(".claude/commands/scrape.md")

@@ -255,6 +255,8 @@ def list_portals(root: Path) -> list[dict[str, Any]]:
     if not skills.is_dir():
         return portals
     for skill_md in sorted(skills.glob("*/SKILL.md")):
+        if not (skill_md.parent / "cli" / "src" / "cli.ts").is_file():
+            continue
         text = skill_md.read_text(encoding="utf-8")
         name_match = _NAME_LINE_RE.search(text)
         name = name_match.group(1) if name_match else skill_md.parent.name

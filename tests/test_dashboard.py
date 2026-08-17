@@ -125,6 +125,8 @@ class PortalAndPathTests(unittest.TestCase):
             root = Path(tmp)
             skill = root / ".agents" / "skills" / "demo-search" / "SKILL.md"
             skill.parent.mkdir(parents=True)
+            (skill.parent / "cli" / "src").mkdir(parents=True)
+            (skill.parent / "cli" / "src" / "cli.ts").write_text("export {}\n", encoding="utf-8")
             skill.write_text(
                 "---\nname: demo-search\nversion: 1.0.0\nenabled: true\ndescription: demo\n---\n# Demo\n",
                 encoding="utf-8",

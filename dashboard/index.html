@@ -4,42 +4,54 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Job search</title>
+  <meta name="description" content="Local pipeline board for your job hunt. Drafting stays in Claude.">
   <link rel="stylesheet" href="/static/style.css">
+  <!-- Design read: personal job-pipeline board, Linear-calm, vanilla CSS, Geist, one copper accent. -->
 </head>
-<body>
-  <header class="top">
-    <div>
-      <p class="eyebrow">Local only · 127.0.0.1</p>
-      <h1>Job search</h1>
-    </div>
-    <p class="lede">Pipeline from your tracker and scrape backlog. Claude still drafts CVs and letters.</p>
-  </header>
+<body class="is-loading">
+  <a class="skip" href="#main">Skip to board</a>
+  <div class="grain" aria-hidden="true"></div>
 
-  <section id="empty" class="empty hidden">
-    <h2>Nothing to show yet</h2>
-    <p>Run <code>/setup</code> then <code>/scrape</code> in Claude. This page does not invent jobs.</p>
-  </section>
+  <div class="shell">
+    <header class="island">
+      <div class="island-core">
+        <p class="kicker">Local · 127.0.0.1</p>
+        <h1>Job search</h1>
+        <p class="lede">Your tracker and scrape backlog. Claude still writes the CV and letter.</p>
+      </div>
+    </header>
 
-  <section id="stats" class="stats"></section>
+    <main id="main">
+      <section id="empty" class="empty hidden" aria-live="polite">
+        <h2>No applications yet</h2>
+        <p>Run <code>/setup</code>, then <code>/scrape</code>, in Claude. This page does not invent jobs.</p>
+      </section>
 
-  <section class="board" id="board"></section>
+      <section id="stats" class="metrics" aria-label="Pipeline counts"></section>
+      <section class="board" id="board" aria-label="Applications"></section>
 
-  <section class="panel">
-    <h2>Ranked backlog</h2>
-    <p class="hint">Copy <code>/apply</code> into Claude. This site does not draft applications.</p>
-    <div id="backlog"></div>
-  </section>
+      <section class="bezel">
+        <div class="panel">
+          <h2>Ranked backlog</h2>
+          <p class="hint">Copy the apply command into Claude. This site does not draft applications.</p>
+          <div id="backlog"></div>
+        </div>
+      </section>
 
-  <section class="panel">
-    <h2>Portals</h2>
-    <p class="hint"><code>enabled: false</code> skips a board in <code>/scrape</code> without deleting the skill.</p>
-    <div id="portals" class="portals"></div>
-  </section>
+      <section class="bezel">
+        <div class="panel">
+          <h2>Portals</h2>
+          <p class="hint">Off means <code>/scrape</code> skips that board. The skill stays installed.</p>
+          <div id="portals" class="portals"></div>
+        </div>
+      </section>
+    </main>
 
-  <footer>
-    Status writes edit <code>job_search_tracker.csv</code> only.
-    Later stages still belong in <code>/outcome</code> when you have notes to archive.
-  </footer>
+    <footer>
+      Status changes edit <code>job_search_tracker.csv</code> only.
+      Use <code>/outcome</code> when you have notes to archive.
+    </footer>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>

@@ -65,7 +65,7 @@ If this fails (bun not installed), skip to **1c (WebSearch fallback)** for all p
 
 #### 1b. Run CLI tools (primary — run these in parallel where possible)
 
-Discover all installed portal CLI skills by reading every `SKILL.md` found under `.agents/skills/*/SKILL.md`. Each file documents that portal's exact CLI flags and usage examples. **Use each portal's own documented interface — do not guess flags.** This approach automatically includes any new portals added via `/add-portal` without requiring changes to this file.
+Discover installed **portal CLI** skills: every `.agents/skills/*/SKILL.md` whose directory also contains `cli/src/cli.ts`. Skip other skills in that tree (taste/design skills live under `.claude/skills/` and are not job boards). Each portal SKILL.md documents that portal's exact CLI flags. **Use each portal's own documented interface — do not guess flags.** `/add-portal` skills are picked up automatically when they include the CLI.
 
 **Portal on/off:** if a skill's YAML frontmatter has `enabled: false`, skip it entirely and list it as `skipped (disabled)` in the Step 5 summary. Missing `enabled` means **on** (same as `enabled: true`). Do not delete the skill directory to silence a board.
 
