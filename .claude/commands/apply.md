@@ -37,12 +37,13 @@ Find a named addressee with a **confidence ladder**. A wrong name on a cover let
 ### How to resolve (in order)
 
 1. Extract names already in the posting text (contact, questions to, reports to, email signature).
-2. If the source URL belongs to an installed portal, run that portal's `detail` command (do not guess flags). Map:
+2. If this URL is already in `job_scraper/seen_jobs.json` and `hiring_contact` is non-null, treat that as a **starting lead** (same confidence as when it was stored). Still verify before printing a name. Do not invent a person from a company string.
+3. If the source URL belongs to an installed portal, run that portal's `detail` command (do not guess flags). Map:
    - Jobnet `contactPersons` → High
    - LinkedIn `hiringTeam` (non-null) → Medium
    - `hiringOrganization` / `hiringOrgName` → company, **not** a person
-3. **Verify-before-use:** independently confirm any name you will print via WebFetch/WebSearch (same rule as company claims). If sources disagree, drop to Unknown.
-4. **Do not** scrape LinkedIn people search or profiles; do not guess from org charts; do not run `"[Company] [Role] hiring manager"` as sufficient evidence.
+4. **Verify-before-use:** independently confirm any name you will print via WebFetch/WebSearch (same rule as company claims). If sources disagree, drop to Unknown.
+5. **Do not** scrape LinkedIn people search or profiles; do not guess from org charts; do not run `"[Company] [Role] hiring manager"` as sufficient evidence.
 
 Present the result in Step 1. If confidence is Medium or Low, ask whether to use the name **before** Step 2 drafts the letter. If the user does not confirm, treat as Unknown for the salutation.
 
@@ -321,12 +322,46 @@ Summarize 3-5 key decisions made to tailor the application:
 
 ### Files Created
 List the files written:
-- `cv/main_<company>.tex`
-- `cover_letters/cover_<company>_<role>.tex`
+- `cv/main_<company>.tex` (+ compiled PDF)
+- `cover_letters/cover_<company>_<role>.tex` (+ compiled PDF)
 - `documents/applications/<company>_<role>/contact.md` (hiring contact + confidence)
 
-Tell the user: "Both files are ready for your review. Open them to check the final output before compiling."
+### Draft archive (always)
+
+Write the application folder so `/status`, `/interview`, and the local dashboard can see this draft **before** `/outcome`. Create `documents/applications/<company>_<role>/` (lowercase, underscores) if needed.
+
+- **`job_posting.md`** — the posting text you fetched in Step 0. If the file already exists, leave it (the archived posting is the one that was applied to).
+- **`cv_draft.tex` / `cover_letter.tex`** — copy (never move) from `cv/main_<company>.tex` and `cover_letters/cover_<company>_<role>.tex`. If either archive file already exists, leave it.
+- **`contact.md`** — already written in Step 0b; do not overwrite.
+
+Do not invent posting text. Do not mark the tracker `applied` until the next prompt.
+
+### Record as applied?
+
+Ask once:
+
+> Drafts are in the archive. Record this as **applied** in `job_search_tracker.csv` now? (Yes if you submitted or are about to. No if you are still reviewing.)
+
+**If yes** (create the tracker if missing, standard header):
+
+```
+date,company,sector,role,role_type,channel,status,contact_person,fit_rating,notes,cv_file,cover_letter_file,source
+```
+
+- Append a row if this company+role is not already present; if it is, update empty columns only — do not duplicate rows and do not clobber a later status (`interview`, `offer`, `hired`, …).
+- `date` — today (`YYYY-MM-DD`)
+- `status` — `applied` (underscore statuses only: `applied`, `interview`, `offer`, `hired`, `rejected`, `no_response`, `offer_declined`, `withdrawn`, `interview_only`)
+- `fit_rating` — the overall fit score from Step 1 (0–100)
+- `cv_file` / `cover_letter_file` — `cv/main_<company>.tex` and `cover_letters/cover_<company>_<role>.tex`
+- `source` — the posting URL if you had one
+- `contact_person` — from `contact.md` when confidence is high or user-confirmed
+- `sector`, `role_type`, `channel` — fill when known; otherwise leave empty
+
+If this URL exists in `job_scraper/seen_jobs.json` and its `status` is not `expired`, set `"status": "evaluated"` (keep `rank_*` fields). Never resurrect `expired`.
+
+**If no** — leave the archive as drafts. When they submit, `/outcome <company>` writes the tracker row.
 
 ### Next Steps
-- **Submitted?** `/outcome <company>` logs it in the tracker and starts the per-application record that `/setup` later uses to calibrate the fit framework.
-- **Interview scheduled?** `/interview` builds a stage-specific prep pack from this posting and the documents you just created.
+- **Pipeline:** `/status` or `python3 tools/dashboard.py` (local board at http://127.0.0.1:8765).
+- **Later stages:** `/outcome <company>` for interview / offer / rejected / `no_response`.
+- **Interview scheduled?** `/interview <company>` builds a prep pack from this archive.

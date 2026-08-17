@@ -168,6 +168,7 @@ All three paths produce the same result: fully populated profile files.
 1. Confirm **Workplace filter** in `.claude/skills/job-scraper/search-queries.md` is a real mode (`onsite` / `hybrid` / `remote-ok` / `remote-only`), not still `[YOUR_WORKPLACE_MODE]`. Re-run `/setup --section search` if needed.
 2. Run **`/expand`** so GitHub, portfolio, and course syllabi get source-tagged into the profile.
 3. Optionally add `salary_data.json` (section 5 below) so `/apply` can benchmark.
+4. Optionally run `python3 tools/dashboard.py` for a local pipeline board at http://127.0.0.1:8765 (reads the tracker and scrape backlog; drafting still happens in Claude).
 
 ### What gets populated
 

@@ -67,7 +67,9 @@ If this fails (bun not installed), skip to **1c (WebSearch fallback)** for all p
 
 Discover all installed portal CLI skills by reading every `SKILL.md` found under `.agents/skills/*/SKILL.md`. Each file documents that portal's exact CLI flags and usage examples. **Use each portal's own documented interface — do not guess flags.** This approach automatically includes any new portals added via `/add-portal` without requiring changes to this file.
 
-For each installed portal skill:
+**Portal on/off:** if a skill's YAML frontmatter has `enabled: false`, skip it entirely and list it as `skipped (disabled)` in the Step 5 summary. Missing `enabled` means **on** (same as `enabled: true`). Do not delete the skill directory to silence a board.
+
+For each **enabled** portal skill:
 
 1. Read its `SKILL.md` to find the correct `bun run …` invocation and supported flags.
 2. Translate the query terms from `search-queries.md` into that portal's flag format (e.g. `--key`, `--search-string`, `--query`, filter codes — whatever the portal's SKILL.md specifies).
@@ -177,15 +179,11 @@ For each high-match job, add 2-3 bullet points:
 ```
 
 After presenting, ask:
-> "Want me to evaluate any of these in detail? Just give me the number(s)."
+> "Want to apply to any of these? Give me the number(s) and I'll start the full `/apply` workflow."
 
-If the user picks a number, invoke the **job-application-assistant** skill workflow (fit evaluation first, then CV + cover letter if approved).
+If the user picks a number, run the **`/apply` command workflow** on that job's URL (`.claude/commands/apply.md`) — ghost check, hiring-contact ladder, drafter-reviewer, PDF/ATS verification. Do **not** invoke the job-application-assistant skill as a shortcut; that path skips those steps. Do **not** write `job_search_tracker.csv` from scrape — `/apply` (record-as-applied) and `/outcome` own tracker rows.
 
-If the run found many new jobs (roughly 8+), also suggest `/rank` - it batch-scores all new postings against the full fit framework and returns a ranked shortlist, which beats eyeballing a long table. (`/rank` sets the `ranked` and `expired` status values in `seen_jobs.json`; treat both as already-seen for dedup purposes.)
-
-### Step 6: Update Tracker (Optional)
-
-If the user decides to apply to any job, add a row to `job_search_tracker.csv`.
+If any `new` jobs remain after this run, also suggest `/rank` so they are scored against the fit framework. Emphasize `/rank` when there are roughly 8 or more. (`/rank` sets the `ranked` and `expired` status values in `seen_jobs.json`; treat both as already-seen for dedup purposes.)
 
 ---
 

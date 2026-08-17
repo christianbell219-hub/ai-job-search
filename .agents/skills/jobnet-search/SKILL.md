@@ -1,6 +1,7 @@
 ---
 name: jobnet-search
 version: 1.0.0
+enabled: true
 description: >
   Make sure to use this skill whenever the user mentions anything related to Danish
   job searching, job listings, job vacancies, employment opportunities in Denmark, or

@@ -1,6 +1,7 @@
 ---
 name: linkedin-search
 version: 1.0.0
+enabled: true
 description: >
   Use this skill whenever the user wants to search for jobs in any location or
   market, find job listings, or look up a specific job posting — in any country,

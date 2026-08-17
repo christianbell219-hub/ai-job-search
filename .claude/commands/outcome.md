@@ -27,7 +27,7 @@ Follow these steps **in order**.
    date,company,sector,role,role_type,channel,status,contact_person,fit_rating,notes,cv_file,cover_letter_file,source
    ```
 2. **With an argument:** match rows case-insensitively on company (and role, if given). One match → proceed. Several → list them and ask. None → the application was made outside the workflow; collect company, role, date applied, channel, and posting URL from the user and add a tracker row.
-3. **Without an argument:** list all rows whose status is not final (not hired / rejected / no response / withdrawn / offer declined) as a numbered table (company, role, date applied, current status) and ask which to update. Flag rows whose status is still `applied` (or waiting) and whose `date` is **14 or more days** ago as **silent** — ask whether to log a follow-up or mark `no_response`. Do not impose `no_response` yourself. If every row is resolved, say so and stop.
+3. **Without an argument:** list all rows whose status is not final (not `hired` / `rejected` / `no_response` / `withdrawn` / `offer_declined`) as a numbered table (company, role, date applied, current status) and ask which to update. Flag rows whose status is still `applied` (or waiting) and whose `date` is **14 or more days** ago as **silent** — ask whether to log a follow-up or mark `no_response`. Do not impose `no_response` yourself. If every row is resolved, say so and stop.
 4. Derive the archive folder name: `documents/applications/<company>_<role>/` - lowercase, underscores for spaces (the convention documented in `documents/README.md`). Check whether the folder and an `outcome.md` already exist - if so, you are updating, not creating.
 
 ---
@@ -97,7 +97,7 @@ Update rules: tick stage checkboxes as they are reached (add the date in parenth
 
 ## Step 4: Update the Tracker
 
-Update the matched row's `status` column (e.g. `applied` → `interview` → `offer` → `hired` / `rejected` / `no response` / `offer declined` / `withdrawn`) and append a short dated note to the `notes` column. If `contact.md` names a person and `contact_person` is empty, copy the name into `contact_person`. Never restructure the CSV, reorder rows, or touch other rows.
+Update the matched row's `status` column using **underscore values only**: `applied` → `interview` → `offer` → `hired` / `rejected` / `no_response` / `offer_declined` / `withdrawn`. When reading older rows, treat spaced aliases (`no response`, `offer declined`) as the underscore form, then write the canonical spelling back. Also fill empty `fit_rating`, `cv_file`, `cover_letter_file`, and `source` when you know them (from `/apply` drafts or the archive). Append a short dated note to the `notes` column. If `contact.md` names a person and `contact_person` is empty, copy the name into `contact_person`. Never restructure the CSV, reorder rows, or touch other rows.
 
 ---
 

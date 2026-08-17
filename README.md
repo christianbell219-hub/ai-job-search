@@ -26,20 +26,12 @@ An AI-powered job application framework built on [Claude Code](https://claude.co
 A structured workflow that turns Claude Code into a full-stack job application assistant. The core workflow (self-profiling, fit evaluation, and the drafter-reviewer application pipeline) is **language- and country-agnostic**. The job portal search skills are built for the Danish market (Jobindex, Jobnet, Akademikernes Jobbank, etc.), but the pattern is designed to be swapped for your local job boards.
 
 ```
-/setup          /scrape              /apply <url>
-  |                |                     |
-  v                v                     v
-Fill in        Search job           Evaluate fit
-your profile   portals              Score & recommend
-  |                |                     |
-  v                v                     v
-Profile        Present matches      Draft CV + Cover Letter
-files ready    with fit ratings     (LaTeX, tailored)
-                   |                     |
-                   v                     v
-               Pick a match         Reviewer agent critiques
-               -> /apply            -> Revise -> Final output
+/setup → /scrape → /rank → /apply → /interview → /outcome
+                              ↑
+                         /status  or  python3 tools/dashboard.py
 ```
+
+`/setup` fills the profile. `/scrape` finds postings; `/rank` shortlists them; `/apply` drafts a tailored CV and cover letter. `/status` (Claude) and the optional local dashboard show the pipeline in a table/board. `/interview` and `/outcome` cover the process after you submit. Drafting always stays in Claude — the dashboard does not write letters.
 
 The framework encodes career guidance best practices, including structured evaluation criteria, forward-looking cover letter framing, and optional salary benchmarking.
 
@@ -113,13 +105,21 @@ If the URL can't be fetched (some job portals block automated access), you can p
 /apply <paste the full job description here>
 ```
 
-This runs the full workflow: evaluate fit, draft CV + cover letter, review with a second agent, revise, and present the final output.
+This runs the full workflow: evaluate fit, draft CV + cover letter, review with a second agent, revise, present the final output, archive the draft, and offer to record the tracker row.
+
+### 6. Optional: local dashboard
+
+```bash
+python3 tools/dashboard.py
+```
+
+Opens http://127.0.0.1:8765 (localhost only). It is a board over `job_search_tracker.csv`, `job_scraper/seen_jobs.json`, and `documents/applications/` — waiting / silent / interview / offer, ranked backlog, portal on/off, copy `/apply` into Claude. It does **not** scrape or draft. Empty files show an empty board.
 
 ## Other commands
 
-`/setup`, `/scrape`, and `/apply` form the core workflow. Eight more commands extend it once your profile is in place:
+`/setup`, `/scrape`, and `/apply` form the core workflow. More commands extend it once your profile is in place:
 
-- **`/status`** is the pipeline view: tracker + scrape backlog + application archives in one table (waiting, silent after 14 days, interview, offer). Read-only; `/outcome` still owns writes.
+- **`/status`** is the pipeline view in Claude: tracker + scrape backlog + application archives (waiting, silent after 14 days, interview, offer). Read-only in chat; `/outcome` and the dashboard can write status. The same data is on the local board (`python3 tools/dashboard.py`).
 - **`/interview`** preps you for a scheduled interview on a tracked application. It builds a stage-specific prep pack from the application's archive (the exact posting, the CV and cover letter the interviewer actually read, feedback recorded from earlier rounds), researches the company and interviewers with a verify-before-use rule, maps likely questions to your STAR examples, and offers a mock interview following the roleplay protocol in `07-interview-prep.md`. After the round it can draft a thank-you note to the `contact.md` person and a next-round pack. Gaps get honest bridge answers, never invented experience.
 - **`/outcome`** records what happened to an application - interview stages, offers, rejections, silence. It archives the submitted CV, cover letter, and posting text into `documents/applications/<company>_<role>/`, keeps `outcome.md` in the format `/setup` Path A parses, and updates the tracker. Once a few applications resolve, it points you back to `/setup` to calibrate the fit framework from what actually got interviews.
 - **`/rank`** bridges `/scrape` and `/apply`: it batch-scores all newly scraped postings against the fit framework (parallel agents fetch each posting and score the five evaluation dimensions) and returns a ranked shortlist with honest per-job strengths and gaps. Deal-breakers veto, deadlines get urgency flags, dead postings get marked expired. Pick a number and it hands off to the full `/apply` workflow.
@@ -143,10 +143,11 @@ ai-job-search/
 │   │   ├── add-template.md            # /add-template register custom LaTeX templates
 │   │   ├── add-portal.md              # /add-portal generate a job-portal search skill for your market
 │   │   ├── rank.md                    # /rank triage scraped jobs into a ranked shortlist
+│   │   ├── scrape.md                  # /scrape (thin wrapper; skill owns the spec)
 │   │   ├── status.md                  # /status pipeline view (tracker + backlog + archives)
 │   │   ├── outcome.md                 # /outcome record application results, archive materials
-│   │   ├── outcome.md                 # /outcome record application results, archive materials
 │   │   ├── interview.md               # /interview stage-specific prep pack + mock interview
+│   │   ├── upskill.md                 # /upskill (thin wrapper; skill owns the spec)
 │   │   └── reset.md                   # /reset wipe profile data or documents folder
 │   ├── skills/
 │   │   ├── job-application-assistant/  # Core application skill
@@ -185,7 +186,10 @@ ai-job-search/
 │   └── applications/                  # Past application records (<company>_<role>/)
 ├── .github/workflows/ci.yml           # CI: LaTeX smoke compiles, skill lint, CLI typechecks
 ├── salary_lookup.py                   # Salary benchmarking tool (BYO data)
+├── dashboard/                         # Local pipeline UI (static files)
 ├── tools/
+│   ├── dashboard.py                   # python3 tools/dashboard.py → http://127.0.0.1:8765
+│   ├── job_pipeline.py                # Tracker / seen_jobs / portal helpers for the dashboard
 │   ├── convert_salary_excel.py        # Convert salary Excel to JSON
 │   ├── lint_skills.py                 # CI lint for skills, commands, settings.json
 │   ├── security_guards.py             # CI guards: permission allowlist, gitignore rules, manifests

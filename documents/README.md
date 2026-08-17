@@ -99,7 +99,7 @@ Reference letters from former managers, supervisors, or collaborators.
 
 A record of past job applications. Each subfolder is one application.
 
-You can maintain these folders by hand, or let the **`/outcome`** command do it: it records progress updates and final results conversationally, archives the submitted drafts and the posting text, keeps `outcome.md` in the format below, and updates `job_search_tracker.csv` in the same step.
+You can maintain these folders by hand, or let **`/apply`** start them (posting + draft copies + `contact.md`, optional tracker row) and **`/outcome`** update them: it records progress and final results, archives submitted drafts if missing, keeps `outcome.md` in the format below, and updates `job_search_tracker.csv`.
 
 **Subfolder naming:** `<company>_<role>` — lowercase, underscores for spaces.
 
@@ -119,7 +119,7 @@ applications/
 
 **`cv_draft.tex`** — The CV variant you submitted. Used to extract profile statement styles for `05-cv-templates.md`.
 
-**`contact.md`** — Written by `/apply` (and filled by `/outcome` if missing). Hiring-contact name, title, source, and confidence. `/interview` reads this; `/setup` ignores it (same as `interview_prep_*.md`).
+**`contact.md`** — Written by `/apply` (and filled by `/outcome` if missing). Hiring-contact name, title, source, and confidence. `/interview` and the local dashboard read this; `/setup` ignores it (same as `interview_prep_*.md`).
 
 ```markdown
 # Hiring contact: <Company> — <Role>
@@ -157,6 +157,20 @@ Any signal about what they valued or didn't?
 ```
 
 `in_progress` marks an application that is still open (used by `/outcome` for interview-stage updates before a resolution). `/setup`'s calibration draws conclusions only from applications with a final status.
+
+### Tracker CSV (`job_search_tracker.csv`)
+
+Header:
+
+```
+date,company,sector,role,role_type,channel,status,contact_person,fit_rating,notes,cv_file,cover_letter_file,source
+```
+
+**Canonical `status` values** (write these; `/status` and the dashboard also accept spaced aliases when reading):
+
+`applied` | `interview` | `offer` | `hired` | `rejected` | `no_response` | `offer_declined` | `withdrawn` | `interview_only`
+
+`/apply` may create the `applied` row (fit score and file paths included) when you confirm “record as applied”. `/outcome` owns later status changes. Do not write `no response` or `offer declined` (use underscores).
 
 Application folders may also contain **`interview_prep_<stage>.md`** and **`interview_followup_<stage>.md`** files written by `/interview`, **`contact.md`** written by `/apply`, and **`offer.md`** written by `/outcome`. `/setup` reads only `job_posting.md`, `cover_letter.tex`, `cv_draft.tex`, and `outcome.md` and ignores the rest.
 

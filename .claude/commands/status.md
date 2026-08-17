@@ -33,7 +33,7 @@ Today's date is the system date. Do not invent rows.
 
 ## Step 2: Classify tracker rows
 
-**Final** statuses (closed): `hired`, `rejected`, `no response`, `no_response`, `withdrawn`, `offer declined`, `offer_declined`, `interview_only`.
+**Final** statuses (closed): `hired`, `rejected`, `no_response`, `withdrawn`, `offer_declined`, `interview_only`. When reading, treat spaced aliases (`no response`, `offer declined`) as the underscore form; `/outcome` and the dashboard write underscores only.
 
 **Open** otherwise, including `applied`, `interview`, `offer`, `in_progress`, and blanks.
 
@@ -100,7 +100,7 @@ Rules:
 
 ## Important Rules
 
-1. **Read-only.** Do not edit the tracker, `seen_jobs.json`, archives, or profile files. `/outcome` owns status writes.
+1. **Read-only.** Do not edit the tracker, `seen_jobs.json`, archives, or profile files. `/outcome` and the local dashboard own status writes; this command only presents.
 2. **Do not invent applications.** Empty files mean an empty table.
 3. **Silence is a prompt, not a resolution.** Suggest `/outcome`; never set `no_response` from `/status`.
 4. **14-day silent window** is the default; if the user asks for a different cutoff, use it for this run only.

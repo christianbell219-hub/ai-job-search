@@ -317,7 +317,7 @@ Ask about:
 - **Geographic scope:** "Which cities or regions should I search in? How far are you willing to commute?" Use this to define the location filter tiers (ideal, acceptable, borderline, too far). These tiers apply to **onsite and hybrid** roles only.
 - **Workplace mode:** "Are you looking for onsite jobs, hybrid, fully remote, or both local and remote?" Record exactly one of: `onsite` | `hybrid` | `remote-ok` | `remote-only`. If they are open to remote without dropping local search, record `remote-ok` (the default when remote is acceptable). If they only want remote, record `remote-only`.
 - **Remote constraints** (ask when mode is `remote-ok` or `remote-only`): acceptable timezones or regions (e.g. EU/CET, anywhere); whether the employer must be in a given country for contracts/tax. Write these into `search-queries.md` as **Remote regions / timezones** and **Employer country constraint**. Do not use commute distance to filter true-remote jobs.
-- **Job portals:** "The framework includes tools for Danish job portals (Jobindex, Jobbank, Jobdanmark, Jobnet). Are these the right ones for you, or do you use other sites?" Note: if the user is outside Denmark, acknowledge that the built-in CLI tools are Denmark-specific and suggest they can add their own portal integrations or rely on LinkedIn/Google site-searches.
+- **Job portals:** "The framework includes tools for Danish job portals (Jobindex, Jobbank, Jobdanmark, Jobnet) plus LinkedIn and freehire. Are these the right ones for you, or do you use other sites?" Each portal skill has `enabled: true` in its `SKILL.md` frontmatter. If they do not use a board, set that skill to `enabled: false` — do not delete the directory. `/scrape` reports skipped (disabled) portals. The local dashboard can toggle the same flags. Note: if the user is outside Denmark, disable the Danish CLIs and keep LinkedIn/freehire (or add a portal via `/add-portal`).
 
 **Important:** Also suggest role types the user may not have considered, based on their skill profile. For example:
 - If they have strong Python + domain expertise: "Have you considered roles like 'Technical Consultant' or 'Solutions Engineer' in your domain?"
@@ -395,6 +395,7 @@ Present a summary:
 > **Try it out:**
 > - Run `/scrape` to search for matching jobs right now
 > - Run `/apply` with a job posting URL to see the full application workflow
+> - Run `python3 tools/dashboard.py` for a local pipeline board (http://127.0.0.1:8765) — drafting still happens in Claude
 > - Run `/setup --section search` later to update your search queries as your priorities evolve
 
 If Path A left any STAR stubs in `07-interview-prep.md`, also note:
