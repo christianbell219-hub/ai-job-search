@@ -192,6 +192,27 @@ class HttpTests(unittest.TestCase):
                 httpd.shutdown()
                 httpd.server_close()
 
+    def test_serves_dashboard_visuals(self) -> None:
+        httpd = ThreadingHTTPServer(("127.0.0.1", 0), dashboard_mod.make_handler(ROOT))
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+        port = httpd.server_address[1]
+        try:
+            for name in ("atmosphere.webp", "empty.webp", "backlog.webp"):
+                with urlopen(f"http://127.0.0.1:{port}/static/img/{name}", timeout=5) as resp:
+                    body = resp.read()
+                    self.assertEqual(resp.headers.get("Content-Type"), "image/webp")
+                    self.assertGreater(len(body), 1000)
+                    self.assertTrue(body.startswith(b"RIFF"))
+            with urlopen(f"http://127.0.0.1:{port}/", timeout=5) as resp:
+                html = resp.read().decode("utf-8")
+            self.assertIn('class="atmosphere"', html)
+            self.assertIn("/static/img/empty.webp", html)
+            self.assertIn("panel-strip", html)
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
     def test_refuses_non_localhost_host(self) -> None:
         self.assertEqual(dashboard_mod.main(["--host", "0.0.0.0"]), 2)
 

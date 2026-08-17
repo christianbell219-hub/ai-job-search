@@ -25,6 +25,7 @@ if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
 mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("image/webp", ".webp")
 
 from job_pipeline import (  # noqa: E402
     build_state,

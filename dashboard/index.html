@@ -6,10 +6,11 @@
   <title>Job search</title>
   <meta name="description" content="Local pipeline board for your job hunt. Drafting stays in Claude.">
   <link rel="stylesheet" href="/static/style.css">
-  <!-- Design read: personal job-pipeline board, Linear-calm, vanilla CSS, Geist, one copper accent. -->
+  <!-- Design read: personal job-pipeline board, Linear-calm, vanilla CSS, Geist, one copper accent, still-life photography. -->
 </head>
 <body class="is-loading">
   <a class="skip" href="#main">Skip to board</a>
+  <div class="atmosphere" aria-hidden="true"></div>
   <div class="grain" aria-hidden="true"></div>
 
   <div class="shell">
@@ -23,18 +24,26 @@
 
     <main id="main">
       <section id="empty" class="empty hidden" aria-live="polite">
-        <h2>No applications yet</h2>
-        <p>Run <code>/setup</code>, then <code>/scrape</code>, in Claude. This page does not invent jobs.</p>
+        <figure class="empty-visual">
+          <img src="/static/img/empty.webp" alt="" width="900" height="900" decoding="async">
+        </figure>
+        <div class="empty-copy">
+          <h2>No applications yet</h2>
+          <p>Run <code>/setup</code>, then <code>/scrape</code>, in Claude. This page does not invent jobs.</p>
+        </div>
       </section>
 
       <section id="stats" class="metrics" aria-label="Pipeline counts"></section>
       <section class="board" id="board" aria-label="Applications"></section>
 
       <section class="bezel">
-        <div class="panel">
-          <h2>Ranked backlog</h2>
-          <p class="hint">Copy the apply command into Claude. This site does not draft applications.</p>
-          <div id="backlog"></div>
+        <div class="panel panel-photo">
+          <div class="panel-strip" role="img" aria-label="Folders and copper ruler on a desk"></div>
+          <div class="panel-body">
+            <h2>Ranked backlog</h2>
+            <p class="hint">Copy the apply command into Claude. This site does not draft applications.</p>
+            <div id="backlog"></div>
+          </div>
         </div>
       </section>
 
